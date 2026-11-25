@@ -46,6 +46,7 @@ button:disabled{opacity:.4}
 <div id="hud">
  <div class="bar" id="hpb"><i></i></div><div class="bar" id="xpb"><i></i></div>
  <div id="tm">0:00</div><div id="st"></div>
+ <div id="vig" style="position:fixed;inset:0;pointer-events:none;z-index:4;opacity:0;box-shadow:inset 0 0 140px 40px rgba(200,0,0,.75)"></div>
  <div id="bname"></div><div class="bar" id="boss"><i></i></div>
  <div id="wp"></div><button id="mute" style="position:absolute;top:60px;left:10px;pointer-events:auto;font-size:18px;padding:2px 10px">🔊</button><div id="dash">اندفاع</div><div id="joy"><i></i></div>
 </div>
@@ -198,6 +199,7 @@ function newRun(){
  S.map=SAVE.map===3&&(SAVE.wins>1||Q.get('map'))?3:SAVE.map===2&&(SAVE.wins>0||Q.get('map'))?2:1;S.lotusT=25;S.wind=null;S.windT=25;
  if(S.map===2){ground.material.color.multiplyScalar(.9).lerp(new THREE.Color(0xff9a60),.35);scene.fog.color.lerp(new THREE.Color(0x6a3018),.5);scene.background.lerp(new THREE.Color(0x4a2010),.5);for(let i=0;i<7;i++){const a=R()*TAU,d=rr(8,AR-8),r=rr(3.5,5.5);const m=new THREE.Mesh(GEO.disc,new THREE.MeshBasicMaterial({color:0x3a2208,transparent:true,opacity:.75,depthWrite:false}));m.rotation.x=-Math.PI/2;m.scale.setScalar(r);m.position.set(Math.cos(a)*d,.06,Math.sin(a)*d);scene.add(m);sands.push({x:m.position.x,z:m.position.z,r,m})}}
  if(S.map===3){ground.material.color.lerp(new THREE.Color(0x70c0a0),.45);scene.fog.color.setHex(0x0c3a38);scene.background.setHex(0x06242a);const w=new THREE.Mesh(new THREE.PlaneGeometry(200,12),new THREE.MeshBasicMaterial({color:0x2a7aaa,transparent:true,opacity:.75,depthWrite:false}));w.rotation.x=-Math.PI/2;w.position.y=.07;scene.add(w);sands.push({x:0,z:0,r:0,m:w,water:true})}
+ if(S.map===3){for(let i=0;i<46;i++){const a=i/46*TAU+rr(-.05,.05),rad=AR+rr(3,16);const g=new THREE.Group();const h=rr(4,7);const tr=new THREE.Mesh(new THREE.CylinderGeometry(.25,.4,h,6),new THREE.MeshLambertMaterial({color:0x7a5a30}));tr.position.y=h/2;g.add(tr);for(let k=0;k<6;k++){const lf=new THREE.Mesh(new THREE.ConeGeometry(.5,3.4,4),new THREE.MeshLambertMaterial({color:0x2e8a3a}));lf.position.set(Math.cos(k)*1.4,h+.2,Math.sin(k)*1.4);lf.rotation.set(Math.sin(k)*1.1,0,-Math.cos(k)*1.1);g.add(lf)}g.position.set(Math.cos(a)*rad,0,Math.sin(a)*rad);scene.add(g);sands.push({x:0,z:0,r:0,m:g,water:true})}}
  renderWeapons();
 }
 const cdm=()=>Math.pow(.93,P.p.cdr);
@@ -231,7 +233,7 @@ function director(dt){
  const cap=Math.min(190,60+t/3);
  while(S.sp>=1){S.sp-=1;if(enemies.length>=cap)continue;
   const a=R()*TAU,d=rr(24,30);let x=P.x+Math.cos(a)*d,z=P.z+Math.sin(a)*d;const rd=Math.hypot(x,z);if(rd>AR-2){x*=(AR-2)/rd;z*=(AR-2)/rd}
-  const w=[['scarab',10]];if(t>25)w.push(['mummy',7]);if(t>80)w.push(['jackal',5]);if(t>140)w.push(['priest',4]);if(t>200)w.push(['golem',1.5]);if(t>(S.map===3?40:170))w.push(['sobek',S.map===3?7:3]);if(t>240)w.push(['wraith',3]);
+  const w=[['scarab',10]];if(t>25)w.push(['mummy',7]);if(t>80)w.push(['jackal',5]);if(t>140)w.push(['priest',4]);if(t>200)w.push(['golem',1.5]);if(t>(S.map===3?100:170))w.push(['sobek',S.map===3?3:3]);if(t>240)w.push(['wraith',3]);
   let tot=0;for(const q of w)tot+=q[1];let k=R()*tot,ty='scarab';for(const q of w){if((k-=q[1])<0){ty=q[0];break}}
   const el=t>100&&R()<Math.min(.06,t/6000);
   if(ty==='scarab'&&R()<.5){for(let i=0;i<4;i++)spawnEnemy('scarab',x+rr(-2,2),z+rr(-2,2))}else spawnEnemy(ty,x,z,el)}
@@ -330,7 +332,7 @@ function updateEnemies(dt){
   else if(e.type==='sobek'){e.tt-=dt;if(e.tt<=0){e.tt=3.5;addPool(e.x,e.z)}}
   else if(e.boss){bossAI(e,dt,nx,nz,d);if(e.dst===1){sp=0;e.cx=nx;e.cz=nz}else if(e.dst===2){sp=18;mx=e.cx;mz=e.cz}}
   else if(e.type==='scarab'){const w=Math.sin(e.t*8+e.ph)*.5;mx=nx-nz*w;mz=nz+nx*w}
-  if(sands.length&&inSand(e.x,e.z))sp*=.55;if(S.map===3&&inWater(e.z))sp*=e.type==='sobek'?1.8:.8;e.x+=(mx*sp+e.vx)*dt;e.z+=(mz*sp+e.vz)*dt;e.vx*=Math.pow(.02,dt);e.vz*=Math.pow(.02,dt);
+  if(sands.length&&inSand(e.x,e.z))sp*=.55;if(S.map===3&&inWater(e.z))sp*=e.type==='sobek'?1.3:.8;e.x+=(mx*sp+e.vx)*dt;e.z+=(mz*sp+e.vz)*dt;e.vx*=Math.pow(.02,dt);e.vz*=Math.pow(.02,dt);
   const rd=Math.hypot(e.x,e.z);if(rd>AR){e.x*=AR/rd;e.z*=AR/rd}
   e.m.position.x=e.x;e.m.position.z=e.z;e.m.rotation.y=Math.atan2(mx,mz);
   if(!e.boss)e.m.position.y=Math.abs(Math.sin(e.t*(e.type==='scarab'?14:5)))*(e.type==='scarab'?.1:.2);
@@ -451,6 +453,7 @@ function updFx(dt){
   if(f.t<=0){scene.remove(f.m);if(f.line)f.m.geometry.dispose();fxs.splice(i,1)}}
  S.shake=Math.max(0,S.shake-dt*2)}
 function hud(){
+ {const f=P.hp/P.mhp;$('vig').style.opacity=f<.35?(.35-f)/.35*(.6+.4*Math.sin(S.t*8)):0}
  $('hpb').firstChild.style.width=Math.max(0,P.hp/P.mhp*100)+'%';$('xpb').firstChild.style.width=(P.xp/xpNeed(P.lvl)*100)+'%';
  const t=Math.floor(S.t);$('tm').textContent=Math.floor(t/60)+':'+String(t%60).padStart(2,'0');
  $('st').innerHTML=`المستوى ${P.lvl}${S.curse>1?' · لعنة '+S.curse:''}<br>☠ ${S.kills} &nbsp; 🪙 ${S.coins}`;
