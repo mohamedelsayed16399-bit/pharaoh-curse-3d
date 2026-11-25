@@ -52,7 +52,7 @@ button:disabled{opacity:.4}
 <div class="ov on" id="menu">
  <h1>𓂀 لعنة الفرعون</h1>
  <div class="sub">ادخل المقبرة، اجمع الذهب، وانجُ من اللعنة لحد الفجر. اقتل أنوبيس العظيم وخلّص اللعبة.</div>
- <div id="curse" style="margin-bottom:6px"></div><div id="daily" style="margin-bottom:10px"></div>
+ <div id="maps" style="margin-bottom:6px"></div><div id="curse" style="margin-bottom:6px"></div><div id="daily" style="margin-bottom:10px"></div>
  <button class="big" id="play">ابدأ الرحلة</button>
  <div style="margin-top:12px" id="mstats"></div>
  <h2>معبد التطوير 🪙 <span id="coins">0</span></h2>
@@ -81,6 +81,8 @@ const SHOP=[
  {k:'dmg',n:'سيف الشمس',d:'+8% ضرر',max:5,c:[50,100,170,260,380]},
  {k:'spd',n:'نعال الريح',d:'+5% سرعة',max:4,c:[40,90,160,250]},
  {k:'xp',n:'لوح الحكمة',d:'+10% خبرة',max:4,c:[60,120,200,300]},
+ {k:'pet1',n:'قطة باستت 🐱',d:'رفيقة بتضرب الأعداء',max:1,c:[220]},
+ {k:'pet2',n:'صقر حورس 🦅',d:'بيجمع الغنائم من بعيد',max:1,c:[260]},
  {k:'rev',n:'عنخ الإحياء',d:'إحياء مرة واحدة',max:1,c:[350]}];
 /* ---------- audio ---------- */
 let AC=null,lastSnd={};
@@ -156,8 +158,10 @@ const ET={
  sobek:{hp:75,sp:3.3,dmg:14,r:1.05,xp:6,mk(){const g=new THREE.Group();shadow(g,1.3);part(g,GEO.box,mat(0x3a7a3a,0x0a2a0a),.9,.6,2.2,0,.6,0);part(g,GEO.box,mat(0x4a8a4a),.6,.35,1,0,.55,1.5);part(g,GEO.cone,mat(0x2a5a2a),.25,.5,1.2,0,.8,-1.4,Math.PI/2);part(g,GEO.sph,new THREE.MeshBasicMaterial({color:0xffe03a}),.1,.1,.1,.25,.95,.9);part(g,GEO.sph,new THREE.MeshBasicMaterial({color:0xffe03a}),.1,.1,.1,-.25,.95,.9);part(g,GEO.box,mat(0xffd24a,0x6a4a00),.95,.1,.3,0,.95,0);return g}},
  boss:{hp:1300,sp:2.4,dmg:20,r:2.2,xp:0,mk(){const g=new THREE.Group();shadow(g,2.6);part(g,GEO.cone,mat(0x1a1030,0x20104a),2.2,4.2,2.2,0,2.1,0);part(g,GEO.sph,mat(0x2a2038),.9,1,.9,0,4.5,0);part(g,GEO.cone,mat(0x2a2038),.3,1.5,.3,-.5,5.7,0);part(g,GEO.cone,mat(0x2a2038),.3,1.5,.3,.5,5.7,0);part(g,GEO.box,mat(0xffd24a,0x8a6a00),1.9,.35,1,0,3.8,.1);part(g,GEO.sph,new THREE.MeshBasicMaterial({color:0xff4020}),.14,.14,.14,-.3,4.6,.8);part(g,GEO.sph,new THREE.MeshBasicMaterial({color:0xff4020}),.14,.14,.14,.3,4.6,.8);part(g,GEO.cyl,mat(0xffd24a,0x8a6a00),.12,5.5,.12,2,2.8,0);return g}}};
 /* ---------- state ---------- */
+if(Q.has('pets')){SAVE.up.pet1=1;SAVE.up.pet2=1}
+if(Q.get('map')){SAVE.map=+Q.get('map')}
 if(Q.get('curse')){SAVE.maxCurse=+Q.get('curse');SAVE.curse=+Q.get('curse')}
-let pools=[],zones=[],P,S,enemies=[],projs=[],eprojs=[],gems=[],tele=[],fxs=[],orbs=[],grid=new Map();
+let sands=[],pools=[],zones=[],P,S,enemies=[],projs=[],eprojs=[],gems=[],tele=[],fxs=[],orbs=[],grid=new Map();
 const keys={};let joyV={x:0,z:0};
 const WDEF={
  ankh:{n:'سهام عنخ',ic:'☥',d:['سهم ذهبي على أقرب عدو','+سهم إضافي وضرر أعلى','اختراق عدو إضافي','+سهم، ضرر أعلى','أقصى: سهام موجهة تخترق 3']},
@@ -170,21 +174,25 @@ const PDEF={
  mag:{n:'مغناطيس الذهب',ic:'🧲',d:'+35% مدى الجمع'},xp:{n:'حكمة تحوت',ic:'📜',d:'+15% خبرة'},
  dmg:{n:'قوة سخمت',ic:'💪',d:'+12% ضرر'},reg:{n:'نعمة إيزيس',ic:'🌿',d:'+0.7 صحة/ث'},cdr:{n:'ساعة رع',ic:'⏳',d:'-7% تبريد'}};
 function clearAll(){
- for(const a of [enemies,projs,eprojs,gems,tele,fxs,orbs,zones,pools])for(const o of a){if(o.m)scene.remove(o.m);if(o.m2)scene.remove(o.m2)}
- enemies=[];projs=[];eprojs=[];gems=[];tele=[];fxs=[];orbs=[];zones=[];pools=[];
+ for(const a of [enemies,projs,eprojs,gems,tele,fxs,orbs,zones,pools,sands])for(const o of a){if(o.m)scene.remove(o.m);if(o.m2)scene.remove(o.m2)}
+ enemies=[];projs=[];eprojs=[];gems=[];tele=[];fxs=[];orbs=[];zones=[];pools=[];sands=[];
+ if(P&&P.pets)P.pets.forEach(p=>scene.remove(p.m));
+ if(P&&P.pets)P.pets.forEach(p=>scene.remove(p.m));
  if(P&&P.m)scene.remove(P.m)}
 function newRun(){
  clearAll();
  const u=SAVE.up;
  P={x:0,z:0,fx:0,fz:1,hp:100*(1+.12*u.hp),mhp:100*(1+.12*u.hp),sp:7*(1+.05*u.spd),inv:0,dash:0,dcd:0,dvx:0,dvz:0,
   xp:0,lvl:1,w:{ankh:1,scarab:0,nova:0,bolt:0,storm:0},p:{hp:0,spd:0,mag:0,xp:0,dmg:0,reg:0,cdr:0},
-  cd:{ankh:.3,nova:2,bolt:1},rev:u.rev,m:mkPlayer(),orbA:0,hurtT:0};
+  cd:{ankh:.3,nova:2,bolt:1},evo:{},pets:[],rev:u.rev,m:mkPlayer(),orbA:0,hurtT:0};
  P.dmgM=1+.08*u.dmg;P.xpM=1+.1*u.xp;
  scene.add(P.m);
  S={curse:Math.min(SAVE.curse||1,SAVE.maxCurse||1),state:'play',t:0,kills:0,coins:0,sp:0,swarmT:30,bosses:0,final:false,won:false,shake:0,pending:0,chests:0,bossE:null,dealt:0,nov2:0,winT:0,auto:false,dashReq:false};
  $('boss').style.display='none';$('bname').style.display='none';
  const BI=[[0x1d1030,0x2a1830,0xffffff],[0x08142a,0x0c1c38,0x7a9aff],[0x2a0808,0x3a0c0c,0xff6a5a]][S.curse-1];
  scene.background.setHex(BI[0]);scene.fog.color.setHex(BI[1]);ground.material.color.setHex(BI[2]);
+ S.map=SAVE.map===2&&(SAVE.wins>0||Q.get('map'))?2:1;S.wind=null;S.windT=25;
+ if(S.map===2){ground.material.color.multiplyScalar(.9).lerp(new THREE.Color(0xff9a60),.35);scene.fog.color.lerp(new THREE.Color(0x6a3018),.5);scene.background.lerp(new THREE.Color(0x4a2010),.5);for(let i=0;i<7;i++){const a=R()*TAU,d=rr(8,AR-8),r=rr(3.5,5.5);const m=new THREE.Mesh(GEO.disc,new THREE.MeshBasicMaterial({color:0x3a2208,transparent:true,opacity:.75,depthWrite:false}));m.rotation.x=-Math.PI/2;m.scale.setScalar(r);m.position.set(Math.cos(a)*d,.06,Math.sin(a)*d);scene.add(m);sands.push({x:m.position.x,z:m.position.z,r,m})}}
  renderWeapons();
 }
 const cdm=()=>Math.pow(.93,P.p.cdr);
@@ -202,8 +210,9 @@ function spawnBoss(final){
  const hp=(final?14000:3800)*(1+.15*(S.curse-1));e.hp=e.mhp=hp;e.boss=true;e.final=final;e.dmg=final?26:20;e.sp=final?2.8:2.2;
  e.m.scale.setScalar(final?1.35:1);
  if(final)e.m.children.forEach(c=>{if(c.userData.base&&c.userData.base.color&&c.userData.base.color.getHex()===0x1a1030){c.material=c.userData.base=mat(0x4a0a10,0x400010)}});
+ if(S.map===2&&!final){e.variant='sekh';$('bname').textContent='☠ سخمت اللبؤة';e.m.children.forEach(c=>{if(c.userData.base&&c.userData.base.color&&c.userData.base.color.getHex()===0x1a1030){c.material=c.userData.base=mat(0x8a3a10,0x602000)}})}
  e.at=3;e.slamT=5;e.sumT=8;S.bossE=e;
- $('boss').style.display='block';$('bname').style.display='block';$('bname').textContent=final?'☠ أنوبيس العظيم':'☠ حارس المقبرة';
+ $('boss').style.display='block';$('bname').style.display='block';$('bname').textContent=final?'☠ أنوبيس العظيم':(S.map===2?'☠ سخمت اللبؤة':'☠ حارس المقبرة');
  banner(final?'أنوبيس العظيم ظهر!':'حارس المقبرة ظهر!');snd(90,.8,'sawtooth',.12,.5)}
 const BOSS1=+(Q.get('b1')||240),BOSS2=+(Q.get('b2')||480);
 function director(dt){
@@ -284,10 +293,13 @@ function hurtP(d){
  if(GOD){P.inv=.3;return}
  P.hp-=d;try{navigator.vibrate&&navigator.vibrate(40)}catch(e){}P.inv=.7;P.hurtT=.2;S.shake=Math.max(S.shake,.35);snd(120,.2,'sawtooth',.08,.5);dnum(P.x,P.z,Math.round(d),true);
  if(P.hp<=0){if(P.rev>0){P.rev--;P.hp=P.mhp*.6;P.inv=2.5;ringFx(P.x,P.z,12,0xffffff,.6);banner('عنخ الإحياء! حياة تانية');for(const e of enemies)if(!e.boss&&Math.hypot(e.x-P.x,e.z-P.z)<12){e.vx+=(e.x-P.x)*2;e.vz+=(e.z-P.z)*2}}else gameOver()}}
+function inSand(x,z){for(const q of sands)if((x-q.x)**2+(z-q.z)**2<q.r*q.r)return true;return false}
+function mapTick(dt){if(S.map!==2)return;S.windT-=dt;if(S.windT<=0&&!S.wind){S.windT=40;const a=R()*TAU;S.wind={t:6,dx:Math.cos(a),dz:Math.sin(a)};banner('🌪 عاصفة رملية! بتزقّك')}
+ if(S.wind){S.wind.t-=dt;const w=S.wind;if(P.dash<=0){P.x+=w.dx*2.6*dt;P.z+=w.dz*2.6*dt}for(const e of enemies){if(!e.boss){e.x+=w.dx*2.2*dt;e.z+=w.dz*2.2*dt}}if(R()<.7)burst(P.x+rr(-12,12),rr(.5,3),P.z+rr(-9,9),1,0xd8b070,5);if(w.t<=0)S.wind=null}}
 function updatePlayer(dt){
- const v=inputVec();
+ mapTick(dt);const v=inputVec();
  if(P.dash>0){P.dash-=dt;P.x+=P.dvx*dt;P.z+=P.dvz*dt;burst(P.x,.5,P.z,1,0x7de0ff,1)}
- else{P.x+=v.x*P.sp*dt;P.z+=v.z*P.sp*dt;if(v.x||v.z){P.fx=v.x;P.fz=v.z}}
+ else{const sm=sands.length&&inSand(P.x,P.z)?.55:1;P.x+=v.x*P.sp*sm*dt;P.z+=v.z*P.sp*sm*dt;if(v.x||v.z){P.fx=v.x;P.fz=v.z}}
  if((keys[' ']||keys.Shift||S.dashReq)&&P.dcd<=0&&P.dash<=0){const l=Math.hypot(v.x,v.z),dx=l>.1?v.x/l:P.fx,dz=l>.1?v.z/l:P.fz;P.dvx=dx*24;P.dvz=dz*24;P.dash=.2;P.dcd=2;P.inv=Math.max(P.inv,.3);snd(300,.15,'sine',.06,2);ringFx(P.x,P.z,2,0x7de0ff,.3)}
  keys[' ']=false;S.dashReq=false;P.dcd-=dt;
  const rd=Math.hypot(P.x,P.z);if(rd>AR-1.5){P.x*=(AR-1.5)/rd;P.z*=(AR-1.5)/rd}
@@ -307,9 +319,9 @@ function updateEnemies(dt){
    else if(e.st===1){sp=0;e.cx=nx;e.cz=nz;if(e.tt<=0){e.st=2;e.tt=.45}}
    else if(e.st===2){sp=15;mx=e.cx;mz=e.cz;if(e.tt<=0){e.st=0;e.tt=rr(2.5,4)}}}
   else if(e.type==='sobek'){e.tt-=dt;if(e.tt<=0){e.tt=3.5;addPool(e.x,e.z)}}
-  else if(e.boss)bossAI(e,dt,nx,nz,d);
+  else if(e.boss){bossAI(e,dt,nx,nz,d);if(e.dst===1){sp=0;e.cx=nx;e.cz=nz}else if(e.dst===2){sp=18;mx=e.cx;mz=e.cz}}
   else if(e.type==='scarab'){const w=Math.sin(e.t*8+e.ph)*.5;mx=nx-nz*w;mz=nz+nx*w}
-  e.x+=(mx*sp+e.vx)*dt;e.z+=(mz*sp+e.vz)*dt;e.vx*=Math.pow(.02,dt);e.vz*=Math.pow(.02,dt);
+  if(sands.length&&inSand(e.x,e.z))sp*=.55;e.x+=(mx*sp+e.vx)*dt;e.z+=(mz*sp+e.vz)*dt;e.vx*=Math.pow(.02,dt);e.vz*=Math.pow(.02,dt);
   const rd=Math.hypot(e.x,e.z);if(rd>AR){e.x*=AR/rd;e.z*=AR/rd}
   e.m.position.x=e.x;e.m.position.z=e.z;e.m.rotation.y=Math.atan2(mx,mz);
   if(!e.boss)e.m.position.y=Math.abs(Math.sin(e.t*(e.type==='scarab'?14:5)))*(e.type==='scarab'?.1:.2);
@@ -322,6 +334,7 @@ function bossAI(e,dt,nx,nz,d){
  e.m.position.y=Math.sin(e.t*2)*.3;
  const enr=e.hp<e.mhp*.5;if(enr&&!e.enraged){e.enraged=true;banner('الحارس غضبان!');e.sp*=1.4;snd(60,.8,'sawtooth',.12,.4)}
  const f=enr?.65:1;
+ if(e.variant==='sekh'){e.cdt=(e.cdt===undefined?4:e.cdt)-dt;if(!e.dst&&e.cdt<=0){e.dst=1;e.cdt=.7;ringFx(e.x,e.z,3,0xff4040,.7)}else if(e.dst===1&&e.cdt<=0){e.dst=2;e.cdt=.8}else if(e.dst===2&&e.cdt<=0){e.dst=0;e.cdt=5}}
  e.at-=dt;if(e.at<=0){e.at=3.2*f;const n=e.final?18:12,off=R()*TAU;for(let i=0;i<n;i++){const a=off+i/n*TAU;eprojs.push(mkEP(e.x,e.z,Math.cos(a)*6.5,Math.sin(a)*6.5,e.dmg*.5,0xff5030))}snd(180,.4,'sawtooth',.07,.4)}
  if(e.final||enr){e.sp2=(e.sp2||0)-dt;if(e.sp2<=0){e.sp2=.18;e.ang=(e.ang||0)+.5;for(let k=0;k<(e.final?2:1);k++){const a=e.ang+k*Math.PI;eprojs.push(mkEP(e.x,e.z,Math.cos(a)*5.5,Math.sin(a)*5.5,e.dmg*.35,0xffb040))}}}
  e.slamT-=dt;if(e.slamT<=0){e.slamT=4.2*f;const n=e.final?3:1;for(let i=0;i<n;i++){addTele(P.x+(i?rr(-6,6):0),P.z+(i?rr(-6,6):0),5,1.1,e.dmg*1.2)}}
@@ -336,31 +349,39 @@ function updateEP(dt){for(let i=eprojs.length-1;i>=0;i--){const q=eprojs[i];q.x+
   if(Math.hypot(q.x-P.x,q.z-P.z)<.8&&P.dash<=0){hurtP(q.dmg);q.life=0}
   if(q.life<=0||Math.hypot(q.x,q.z)>AR+5){scene.remove(q.m);eprojs.splice(i,1)}}}
 /* ---------- weapons ---------- */
+function fireP(x,z,a,dmg,pi,col){const m=new THREE.Mesh(GEO.oct,new THREE.MeshBasicMaterial({color:col}));m.scale.set(.15,.15,.45);m.position.set(x,1,z);m.rotation.y=-a+Math.PI/2;scene.add(m);projs.push({x,z,vx:Math.cos(a)*18,vz:Math.sin(a)*18,dmg,pi,life:1.1,m,hit:new Set(),home:false})}
+function mkPet(k){const g=new THREE.Group();shadow(g,.5);if(k==='pet1'){part(g,GEO.sph,mat(0xe0a050),.4,.3,.6,0,.6,0);part(g,GEO.sph,mat(0xe0a050),.28,.28,.28,0,.85,.5);part(g,GEO.cone,mat(0x2a2a2a),.1,.25,.1,-.12,1.1,.5);part(g,GEO.cone,mat(0x2a2a2a),.1,.25,.1,.12,1.1,.5);part(g,GEO.cyl,mat(0xe0a050),.06,.6,.06,0,.7,-.5,1.2)}
+ else{part(g,GEO.sph,mat(0x6a4a2a),.3,.25,.5,0,1.4,0);part(g,GEO.sph,mat(0xffffff),.2,.2,.2,0,1.55,.45);part(g,GEO.box,mat(0x4a3018),1.5,.05,.5,0,1.45,-.05);part(g,GEO.cone,mat(0xffd24a),.07,.25,.07,0,1.52,.7,Math.PI/2)}
+ scene.add(g);return{k,m:g,x:P.x,z:P.z,cd:0,a:R()*6}}
+function pets(dt){if(!P.pets.length){if(SAVE.up.pet1)P.pets.push(mkPet('pet1'));if(SAVE.up.pet2)P.pets.push(mkPet('pet2'))}
+ P.pets.forEach((p,i)=>{p.a+=dt*(p.k==='pet1'?1.5:1);const tx=P.x+Math.cos(p.a+i*3)*2.6,tz=P.z+Math.sin(p.a+i*3)*2.6;p.x+=(tx-p.x)*Math.min(1,dt*5);p.z+=(tz-p.z)*Math.min(1,dt*5);p.m.position.set(p.x,p.k==='pet2'?1+Math.sin(S.t*5)*.2:Math.abs(Math.sin(S.t*8))*.15,p.z);p.m.rotation.y=-p.a-1.6;
+  if(p.k==='pet1'){p.cd-=dt;if(p.cd<=0){const t=nearest(p.x,p.z,14);if(t){p.cd=.7*cdm();fireP(p.x,p.z,Math.atan2(t.z-p.z,t.x-p.x),pdmg(6+P.lvl*.7),1,0x7de0ff)}else p.cd=.2}}
+  else{for(const g of gems)if(g.k!=='chest'&&!g.fly&&Math.hypot(g.x-p.x,g.z-p.z)<9)g.fly=true}})}
 function weapons(dt){
- const w=P.w;
+ pets(dt);const w=P.w;
  if(w.ankh){P.cd.ankh-=dt;if(P.cd.ankh<=0){const L=w.ankh;P.cd.ankh=(0.95-.07*L)*cdm();
-  const n=1+Math.floor(L/2);const t=nearest(P.x,P.z,26);
+  const n=1+Math.floor(L/2)+(P.evo.ankh?2:0);const t=nearest(P.x,P.z,26);
   if(t){const base=Math.atan2(t.z-P.z,t.x-P.x);for(let i=0;i<n;i++){const a=base+(i-(n-1)/2)*.22;
    const m=new THREE.Mesh(GEO.oct,new THREE.MeshBasicMaterial({color:0xffd24a}));m.scale.set(.18,.18,.6);m.position.set(P.x,1.2,P.z);m.rotation.y=-a+Math.PI/2;scene.add(m);
-   projs.push({x:P.x,z:P.z,vx:Math.cos(a)*20,vz:Math.sin(a)*20,dmg:pdmg(11+4*L),pi:L>=3?(L>=5?3:2):1,life:1.4,m,hit:new Set(),home:L>=5})}snd(700,.08,'triangle',.04,1.4,'ank')}}}
- if(w.scarab){const L=w.scarab,n=Math.min(6,L<2?1:L<4?L:L===4?4:6);
+   projs.push({x:P.x,z:P.z,vx:Math.cos(a)*20,vz:Math.sin(a)*20,dmg:pdmg((11+4*L)*(P.evo.ankh?1.5:1)),pi:P.evo.ankh?5:L>=3?(L>=5?3:2):1,life:1.4,m,hit:new Set(),home:L>=5})}snd(700,.08,'triangle',.04,1.4,'ank')}}}
+ if(w.scarab){const L=w.scarab,n=P.evo.scarab?8:Math.min(6,L<2?1:L<4?L:L===4?4:6);
   while(orbs.length<n){const m=new THREE.Group();part(m,GEO.sph,mat(0x1c8a7a,0x0a5a4a),.4,.25,.55,0,0,0);part(m,GEO.box,mat(0xffd24a,0x6a4a00),.8,.05,.1,0,.2,0);scene.add(m);orbs.push({m,hit:new Map()})}
-  P.orbA+=dt*(2.4+.5*L)*(L>=5?1.4:1);const rad=3+.35*L;
+  P.orbA+=dt*(2.4+.5*L)*(L>=5?1.4:1);const rad=3+.35*L+(P.evo.scarab?1.5:0);
   orbs.forEach((o,i)=>{const a=P.orbA+i/orbs.length*TAU;o.x=P.x+Math.cos(a)*rad;o.z=P.z+Math.sin(a)*rad;o.m.position.set(o.x,1,o.z);o.m.rotation.y=-a;
-   near(o.x,o.z,1.6,e=>{if(e.dead)return;if(Math.hypot(e.x-o.x,e.z-o.z)<e.r+.7){const lh=o.hit.get(e)||-9;if(S.t-lh>.35){o.hit.set(e,S.t);hurtE(e,pdmg(9+3.5*L),(e.x-o.x),(e.z-o.z))}}})})}
- if(w.nova){const L=w.nova;P.cd.nova-=dt;if(P.cd.nova<=0){P.cd.nova=(5.2-.45*L)*cdm();doNova(L,1);if(L>=5)S.nov2=.35}
+   near(o.x,o.z,1.6,e=>{if(e.dead)return;if(Math.hypot(e.x-o.x,e.z-o.z)<e.r+.7){const lh=o.hit.get(e)||-9;if(S.t-lh>.35){o.hit.set(e,S.t);hurtE(e,pdmg((9+3.5*L)*(P.evo.scarab?1.6:1)),(e.x-o.x),(e.z-o.z))}}})})}
+ if(w.nova){const L=w.nova;P.cd.nova-=dt;if(P.cd.nova<=0){P.cd.nova=(5.2-.45*L)*cdm()*(P.evo.nova?.5:1);doNova(L,1);if(L>=5)S.nov2=.35}
   if(S.nov2>0){S.nov2-=dt;if(S.nov2<=0)doNova(L,.7)}}
- if(w.storm){const L=w.storm,n=1+Math.floor(L/2)+(L>=5?1:0);
+ if(w.storm){const L=w.storm,n=1+Math.floor(L/2)+(L>=5?1:0)+(P.evo.storm?2:0);
   while(zones.length<n){const m=new THREE.Mesh(new THREE.CylinderGeometry(1.8,.5,3.4,14,1,true),new THREE.MeshBasicMaterial({color:0xe6c27a,transparent:true,opacity:.5,side:2,depthWrite:false}));scene.add(m);zones.push({m,x:P.x+rr(-4,4),z:P.z+rr(-4,4),tk:0,a:R()*6})}
   for(const z of zones){const t=nearest(z.x,z.z,22);const tx=t?t.x:P.x,tz=t?t.z:P.z,dx=tx-z.x,dz=tz-z.z,d=Math.hypot(dx,dz)||1;z.x+=dx/d*Math.min(d,3.6)*dt*(d>1?1:.2);z.z+=dz/d*Math.min(d,3.6)*dt*(d>1?1:.2);z.a+=dt*9;
-   const rad=2.2+.25*L;z.m.position.set(z.x,1.7,z.z);z.m.rotation.y=z.a;z.m.scale.set(rad/1.8*1.1,1,rad/1.8*1.1);z.tk-=dt;
+   const rad=(2.2+.25*L)*(P.evo.storm?1.4:1);z.m.position.set(z.x,1.7,z.z);z.m.rotation.y=z.a;z.m.scale.set(rad/1.8*1.1,1,rad/1.8*1.1);z.tk-=dt;
    if(z.tk<=0){z.tk=.35;near(z.x,z.z,rad+2,e=>{if(e.dead)return;const ex=z.x-e.x,ez=z.z-e.z,ed=Math.hypot(ex,ez);if(ed<rad+e.r){hurtE(e,pdmg(6+3*L),ex/(ed||1)*(L>=5?-.3:-.1),ez/(ed||1)*(L>=5?-.3:-.1))}})}
    near(z.x,z.z,rad+3,e=>{if(e.dead||e.boss)return;const ex=z.x-e.x,ez=z.z-e.z,ed=Math.hypot(ex,ez);if(ed<rad+3&&ed>.5){e.x+=ex/ed*dt*(L>=5?4:2.5);e.z+=ez/ed*dt*(L>=5?4:2.5)}})}}
  if(w.bolt){const L=w.bolt;P.cd.bolt-=dt;if(P.cd.bolt<=0){P.cd.bolt=(2-.15*L)*cdm();
-  const hit=new Set();let cur={x:P.x,z:P.z};const n=2+L+(L>=5?3:0);let pts=[[P.x,1.5,P.z]];
-  for(let i=0;i<n;i++){const t=nearest(cur.x,cur.z,i?10+L:16,hit);if(!t)break;hit.add(t);pts.push([t.x,1,t.z]);hurtE(t,pdmg((14+5*L)*(L>=5?1.5:1)),0,0);cur=t}
+  const hit=new Set();let cur={x:P.x,z:P.z};const n=2+L+(L>=5?3:0)+(P.evo.bolt?4:0);let pts=[[P.x,1.5,P.z]];
+  for(let i=0;i<n;i++){const t=nearest(cur.x,cur.z,i?10+L:16,hit);if(!t)break;hit.add(t);pts.push([t.x,1,t.z]);hurtE(t,pdmg((14+5*L)*(L>=5?1.5:1)*(P.evo.bolt?1.3:1)),0,0);cur=t}
   if(pts.length>1){mkBolt(pts);snd(900,.15,'sawtooth',.04,.3,'bolt')}}}}
-function doNova(L,s){const r=(6+1.1*L)*s;ringFx(P.x,P.z,r,0xffd24a,.45);burst(P.x,.5,P.z,20,0xffd24a,r);snd(200,.3,'sine',.08,3);
+function doNova(L,s){const r=(6+1.1*L)*s*(P.evo.nova?1.3:1);ringFx(P.x,P.z,r,0xffd24a,.45);burst(P.x,.5,P.z,20,0xffd24a,r);snd(200,.3,'sine',.08,3);
  for(const e of enemies){if(e.dead)continue;const dx=e.x-P.x,dz=e.z-P.z,d=Math.hypot(dx,dz);if(d<r+e.r)hurtE(e,pdmg(24+8*L)*s,dx/(d||1)*3,dz/(d||1)*3)}}
 function mkBolt(pts){const g=new THREE.BufferGeometry();const arr=[];for(let i=0;i<pts.length-1;i++){const a=pts[i],b=pts[i+1];for(let k=0;k<=6;k++){const t=k/6,j=(k&&k<6)?.5:0;arr.push(a[0]+(b[0]-a[0])*t+rr(-j,j),a[1]+(b[1]-a[1])*t,a[2]+(b[2]-a[2])*t+rr(-j,j))}}
  g.setAttribute('position',new THREE.Float32BufferAttribute(arr,3));const l=new THREE.Line(g,new THREE.LineBasicMaterial({color:0xaaeeff}));scene.add(l);fxs.push({m:l,t:.15,T:.15,line:1})}
@@ -387,18 +408,21 @@ function addXP(v){P.xp+=v*P.xpM;while(P.xp>=xpNeed(P.lvl)){P.xp-=xpNeed(P.lvl);P
 function offerUpgrades(){
  const pool=[];for(const k in WDEF){const L=P.w[k];if(L<5)pool.push({t:'w',k,L,wt:L===0?(Object.values(P.w).filter(x=>x>0).length<2?3:1.5):1.2})}
  for(const k in PDEF){const L=P.p[k];if(L<5)pool.push({t:'p',k,L,wt:1})}
+ const EV={ankh:'dmg',scarab:'spd',nova:'cdr',bolt:'mag',storm:'hp'};for(const k in EV)if(P.w[k]>=5&&!P.evo[k]&&P.p[EV[k]]>=1)pool.push({t:'e',k,L:0,wt:9});
  const out=[];while(out.length<3&&pool.length){let tot=0;for(const o of pool)tot+=o.wt;let r=R()*tot,ix=0;for(let i=0;i<pool.length;i++){if((r-=pool[i].wt)<0){ix=i;break}}out.push(pool.splice(ix,1)[0])}
  return out}
 function showLevel(){
  const opts=offerUpgrades();const box=$('cards');box.innerHTML='';
  if(!opts.length){P.hp=P.mhp;S.coins+=20;S.pending--;return}
  S.state='level';
- opts.forEach(o=>{const d=o.t==='w'?WDEF[o.k]:PDEF[o.k];const c=document.createElement('div');c.className='card';
-  c.innerHTML=`<div class="lv">[${opts.indexOf(o)+1}]</div><div class="ic">${d.ic}</div><div class="nm">${d.n}</div><div class="lv">${o.L?`مستوى ${o.L} ← ${o.L+1}`:(o.t==='w'?'سلاح جديد!':'جديد')}</div><div class="ds">${o.t==='w'?d.d[o.L]:d.d}</div>`;
+ opts.forEach(o=>{const d=o.t==='e'?{n:'تطور: '+WDEF[o.k].n,ic:'✨'+WDEF[o.k].ic,d:EDESC[o.k]}:o.t==='w'?WDEF[o.k]:PDEF[o.k];const c=document.createElement('div');c.className='card';
+  c.innerHTML=`<div class="lv">[${opts.indexOf(o)+1}]</div><div class="ic">${d.ic}</div><div class="nm">${d.n}</div><div class="lv">${o.t==='e'?'تطور!':o.L?`مستوى ${o.L} ← ${o.L+1}`:(o.t==='w'?'سلاح جديد!':'جديد')}</div><div class="ds">${o.t==='w'?d.d[o.L]:d.d}</div>`;
   c.onclick=()=>pickUp(o);box.appendChild(c)});
  $('lvl').classList.add('on')}
+const EDESC={ankh:'سهام ملكية: +2 سهم، اختراق 5، ضرر ×1.5',scarab:'8 جعارين أكبر وأقوى ×1.6',nova:'وهج أسرع ضعفين ومدى أكبر',bolt:'+4 قفزات وضرر أعلى',storm:'+2 زوبعة وحجم أكبر'};
 function pickUp(o){
- if(o.t==='w'){P.w[o.k]++}
+ if(o.t==='e'){P.evo[o.k]=1;banner('✨ تطور! '+WDEF[o.k].n);ringFx(P.x,P.z,10,0xffffff,.6)}
+ else if(o.t==='w'){P.w[o.k]++}
  else{P.p[o.k]++;if(o.k==='hp'){P.mhp+=25;P.hp=Math.min(P.mhp,P.hp+25)}if(o.k==='spd')P.sp*=1.08}
  S.pending--;$('lvl').classList.remove('on');S.state='play';renderWeapons();snd(800,.2,'triangle',.06,1.5)}
 function renderWeapons(){let h='';for(const k in P.w)if(P.w[k])h+=`<div class="wi"><b>${WDEF[k].ic}</b>${'●'.repeat(P.w[k])}</div>`;
@@ -447,7 +471,8 @@ const MODS=[null,['🐜 يوم الجعارين: أعداء أكتر بـ50%'],[
 const DMOD=1+DAYN%4;let DAILY=false;
 function renderDaily(){const b=$('daily');const best=SAVE.daily.d===TODAY?SAVE.daily.best:0;b.innerHTML='';const x=document.createElement('button');x.style.cssText='font-size:15px;padding:6px 14px'+(DAILY?';outline:3px solid #fff':'');x.textContent=(DAILY?'✅ ':'')+'🗓 تحدي النهارده (ذهب ×1.5)';x.onclick=()=>{DAILY=!DAILY;renderDaily()};b.appendChild(x);
  const n=document.createElement('div');n.className='sub';n.style.margin='4px';n.textContent=MODS[DMOD][0]+(best?` · أفضل نتيجتك النهارده ${Math.floor(best/60)}:${String(best%60).padStart(2,'0')}`:'');b.appendChild(n)}
-function renderCurse(){renderAch();renderDaily();const b=$('curse');b.innerHTML='مستوى اللعنة: ';for(let i=1;i<=3;i++){const x=document.createElement('button');x.style.cssText='font-size:15px;padding:5px 14px;margin:0 3px';x.textContent=i>SAVE.maxCurse?'🔒':'☠'.repeat(i);x.disabled=i>SAVE.maxCurse;if(i===Math.min(SAVE.curse,SAVE.maxCurse))x.style.outline='3px solid #fff';x.onclick=()=>{SAVE.curse=i;persist();renderCurse()};b.appendChild(x)}
+function renderMap(){const b=$('maps');b.innerHTML='الخريطة: ';[['1','🏺 المقبرة'],['2','🏜 صحراء العواصف']].forEach(([k,n])=>{const x=document.createElement('button');const lock=k==='2'&&!(SAVE.wins>0);x.style.cssText='font-size:15px;padding:5px 12px;margin:0 3px'+((SAVE.map||1)==k?';outline:3px solid #fff':'');x.textContent=lock?'🔒 '+n+' (اكسب مرة)':n;x.disabled=lock;x.onclick=()=>{SAVE.map=+k;persist();renderMap()};b.appendChild(x)})}
+function renderCurse(){renderAch();renderDaily();renderMap();const b=$('curse');b.innerHTML='مستوى اللعنة: ';for(let i=1;i<=3;i++){const x=document.createElement('button');x.style.cssText='font-size:15px;padding:5px 14px;margin:0 3px';x.textContent=i>SAVE.maxCurse?'🔒':'☠'.repeat(i);x.disabled=i>SAVE.maxCurse;if(i===Math.min(SAVE.curse,SAVE.maxCurse))x.style.outline='3px solid #fff';x.onclick=()=>{SAVE.curse=i;persist();renderCurse()};b.appendChild(x)}
  const n=document.createElement('div');n.className='sub';n.style.margin='4px';n.textContent=SAVE.maxCurse<3?'كسّر اللعنة لتفتح مستوى أصعب (ذهب أكتر ×1.5 / ×2)':'أعلى مستوى لعنة مفتوح';b.appendChild(n)}
 $('endless').onclick=()=>{$('end').classList.remove('on');$('hud').classList.add('on');S.endless=1;S.state='play';S.nextBoss=S.t+60;S.eb=0;P.inv=3;P.hp=P.mhp;S.winT=0;banner('♾ اللانهائي! زعيم كل 2.5 دقيقة')};
 $('share').onclick=()=>{const t=S.shareTxt||'';if(navigator.share){navigator.share({text:t}).catch(()=>{})}else if(navigator.clipboard){navigator.clipboard.writeText(t);$('share').textContent='✅ اتنسخ'}};
@@ -481,6 +506,6 @@ renderShop();renderCurse();requestAnimationFrame(frame);
 window.__sim=function(sec,opt){if(Q.has('daily'))DAILY=true;startRun();S.auto=true;const log=[];let err=null;
  try{const n=Math.floor(sec*30);for(let i=0;i<n&&S.state!=='end';i++){if(S.state==='winning'){S.winT-=1/30;if(S.winT<=0){end(true);if(Q.has('endless')&&!S.endless){$('endless').onclick();S.auto=true}}continue}step(1/30);if(i%900===0)log.push({t:Math.round(S.t),hp:Math.round(P.hp),lvl:P.lvl,en:enemies.length,kills:S.kills,w:JSON.stringify(P.w)})}}
  catch(e){err=e.stack||String(e)}
- if(S.state!=='end'){S.auto=false;hud()}render();return{state:S.state,won:S.won,endless:!!S.endless,eb:S.eb,mod:S.mod,coins:SAVE.coins,t:Math.round(S.t),lvl:P.lvl,kills:S.kills,hp:Math.round(P.hp),en:enemies.length,boss:!!S.bossE,log,err,gems:gems.length,calls:renderer.info.render.calls,tris:renderer.info.render.triangles}};
+ if(S.state!=='end'){S.auto=false;hud()}render();return{evo:JSON.stringify(P.evo),pets:P.pets.length,map:S.map,state:S.state,won:S.won,endless:!!S.endless,eb:S.eb,mod:S.mod,coins:SAVE.coins,t:Math.round(S.t),lvl:P.lvl,kills:S.kills,hp:Math.round(P.hp),en:enemies.length,boss:!!S.bossE,log,err,gems:gems.length,calls:renderer.info.render.calls,tris:renderer.info.render.triangles}};
 if(TEST&&Q.get('sim')){window.addEventListener('load',()=>{setTimeout(()=>{let r;try{r=window.__sim(+Q.get('sim'))}catch(e){r={err:String(e.stack)}}const d=document.createElement('pre');d.id='out';d.textContent=JSON.stringify(r);document.body.appendChild(d);document.title='DONE'},300)})}
 </script></body></html>
