@@ -250,7 +250,7 @@ function hurtE(e,amt,kx,kz,noPop){
  snd(crit?500:260,.06,'square',.03,.5,'hit');
  if(e.hp<=0)killE(e)}
 function killE(e){
- e.dead=true;S.kills++;SAVE.seen[e.boss?'boss':e.type]=(SAVE.seen[e.boss?'boss':e.type]||0)+1;scene.remove(e.m);
+ e.dead=true;S.kills++;if(S.kills%250===0){banner('🔥 '+S.kills+' قتيل!');snd(440,.5,'triangle',.07,2.5);S.shake=Math.max(S.shake,.3)}SAVE.seen[e.boss?'boss':e.type]=(SAVE.seen[e.boss?'boss':e.type]||0)+1;scene.remove(e.m);
  const d=ET[e.type];
  if(e.boss){S.bossE=null;$('boss').style.display='none';$('bname').style.display='none';
   for(let i=0;i<14;i++)dropGem(e.x+rr(-3,3),e.z+rr(-3,3),20);for(let i=0;i<10;i++)dropCoin(e.x+rr(-3,3),e.z+rr(-3,3),5);
