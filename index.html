@@ -93,8 +93,8 @@ function snd(f,d,type,v,slide,key){
  g.gain.setValueAtTime((v||.05),now);g.gain.exponentialRampToValueAtTime(.0001,now+d);
  o.connect(g);g.connect(AC.destination);o.start(now);o.stop(now+d)}catch(e){}}
 /* ---------- three setup ---------- */
-const renderer=new THREE.WebGLRenderer({antialias:!TEST,preserveDrawingBuffer:TEST});
-renderer.setPixelRatio(Math.min(window.devicePixelRatio||1,2));
+const renderer=new THREE.WebGLRenderer({antialias:!TEST&&!touch,preserveDrawingBuffer:TEST});
+renderer.setPixelRatio(Math.min(window.devicePixelRatio||1,touch?1.5:2));
 document.body.insertBefore(renderer.domElement,document.body.firstChild);
 const scene=new THREE.Scene();scene.background=new THREE.Color(0x1d1030);scene.fog=new THREE.Fog(0x2a1830,40,110);
 const cam=new THREE.PerspectiveCamera(46,1,.5,300);
@@ -282,7 +282,7 @@ function autopilot(){
 function hurtP(d){
  if(P.inv>0||P.dash>0||S.state!=='play')return;
  if(GOD){P.inv=.3;return}
- P.hp-=d;P.inv=.7;P.hurtT=.2;S.shake=Math.max(S.shake,.35);snd(120,.2,'sawtooth',.08,.5);dnum(P.x,P.z,Math.round(d),true);
+ P.hp-=d;try{navigator.vibrate&&navigator.vibrate(40)}catch(e){}P.inv=.7;P.hurtT=.2;S.shake=Math.max(S.shake,.35);snd(120,.2,'sawtooth',.08,.5);dnum(P.x,P.z,Math.round(d),true);
  if(P.hp<=0){if(P.rev>0){P.rev--;P.hp=P.mhp*.6;P.inv=2.5;ringFx(P.x,P.z,12,0xffffff,.6);banner('عنخ الإحياء! حياة تانية');for(const e of enemies)if(!e.boss&&Math.hypot(e.x-P.x,e.z-P.z)<12){e.vx+=(e.x-P.x)*2;e.vz+=(e.z-P.z)*2}}else gameOver()}}
 function updatePlayer(dt){
  const v=inputVec();
@@ -394,7 +394,7 @@ function showLevel(){
  if(!opts.length){P.hp=P.mhp;S.coins+=20;S.pending--;return}
  S.state='level';
  opts.forEach(o=>{const d=o.t==='w'?WDEF[o.k]:PDEF[o.k];const c=document.createElement('div');c.className='card';
-  c.innerHTML=`<div class="ic">${d.ic}</div><div class="nm">${d.n}</div><div class="lv">${o.L?`مستوى ${o.L} ← ${o.L+1}`:(o.t==='w'?'سلاح جديد!':'جديد')}</div><div class="ds">${o.t==='w'?d.d[o.L]:d.d}</div>`;
+  c.innerHTML=`<div class="lv">[${opts.indexOf(o)+1}]</div><div class="ic">${d.ic}</div><div class="nm">${d.n}</div><div class="lv">${o.L?`مستوى ${o.L} ← ${o.L+1}`:(o.t==='w'?'سلاح جديد!':'جديد')}</div><div class="ds">${o.t==='w'?d.d[o.L]:d.d}</div>`;
   c.onclick=()=>pickUp(o);box.appendChild(c)});
  $('lvl').classList.add('on')}
 function pickUp(o){
@@ -455,7 +455,7 @@ function startRun(){SEEDF=DAILY?mul(DSEED):null;newRun();S.daily=DAILY;if(DAILY)
 $('play').onclick=startRun;$('again').onclick=()=>{$('end').classList.remove('on');$('menu').classList.add('on');$('share').textContent='📤 شارك نتيجتك';renderShop();renderCurse()};
 function togglePause(){if(!S)return;if(S.state==='play'){S.state='pause';$('pause').classList.add('on')}else if(S.state==='pause'){S.state='play';$('pause').classList.remove('on')}}
 $('resume').onclick=togglePause;$('quit').onclick=()=>{$('pause').classList.remove('on');S.state='play';P.hp=0;gameOver()};
-addEventListener('keydown',e=>{const k=e.key.length===1?e.key.toLowerCase():e.key;if(k===' '||k.startsWith('Arrow'))e.preventDefault();if((k==='p'||k==='Escape')&&!keys[k])togglePause();keys[k]=true});
+addEventListener('keydown',e=>{if(S&&S.state==='level'&&'123'.includes(e.key)){const c=$('cards').children[+e.key-1];if(c)c.click()}const k=e.key.length===1?e.key.toLowerCase():e.key;if(k===' '||k.startsWith('Arrow'))e.preventDefault();if((k==='p'||k==='Escape')&&!keys[k])togglePause();keys[k]=true});
 addEventListener('keyup',e=>{keys[e.key.length===1?e.key.toLowerCase():e.key]=false});
 document.addEventListener('visibilitychange',()=>{if(document.hidden&&S&&S.state==='play')togglePause()});
 {const joy=$('joy'),knob=joy.firstChild;let id=null,ox=0,oy=0;
