@@ -182,6 +182,8 @@ function newRun(){
  scene.add(P.m);
  S={curse:Math.min(SAVE.curse||1,SAVE.maxCurse||1),state:'play',t:0,kills:0,coins:0,sp:0,swarmT:30,bosses:0,final:false,won:false,shake:0,pending:0,chests:0,bossE:null,dealt:0,nov2:0,winT:0,auto:false,dashReq:false};
  $('boss').style.display='none';$('bname').style.display='none';
+ const BI=[[0x1d1030,0x2a1830,0xffffff],[0x08142a,0x0c1c38,0x7a9aff],[0x2a0808,0x3a0c0c,0xff6a5a]][S.curse-1];
+ scene.background.setHex(BI[0]);scene.fog.color.setHex(BI[1]);ground.material.color.setHex(BI[2]);
  renderWeapons();
 }
 const cdm=()=>Math.pow(.93,P.p.cdr);
@@ -196,7 +198,7 @@ function spawnEnemy(type,x,z,elite){
 function spawnBoss(final){
  const x=Math.max(-AR+4,Math.min(AR-4,P.x+rr(-1,1)*10)),z=Math.max(-AR+4,Math.min(AR-4,P.z-20));
  const e=spawnEnemy('boss',x,z);
- const hp=final?14000:3800;e.hp=e.mhp=hp;e.boss=true;e.final=final;e.dmg=final?26:20;e.sp=final?2.8:2.2;
+ const hp=(final?14000:3800)*(1+.15*(S.curse-1));e.hp=e.mhp=hp;e.boss=true;e.final=final;e.dmg=final?26:20;e.sp=final?2.8:2.2;
  e.m.scale.setScalar(final?1.35:1);
  if(final)e.m.children.forEach(c=>{if(c.userData.base&&c.userData.base.color&&c.userData.base.color.getHex()===0x1a1030){c.material=c.userData.base=mat(0x4a0a10,0x400010)}});
  e.at=3;e.slamT=5;e.sumT=8;S.bossE=e;
@@ -222,7 +224,7 @@ function director(dt){
 function buildGrid(){grid=new Map();for(const e of enemies){const k=(Math.floor(e.x/3)+100)*1000+Math.floor(e.z/3)+100;let c=grid.get(k);if(!c)grid.set(k,c=[]);c.push(e)}}
 function near(x,z,r,fn){const c0=Math.floor((x-r)/3),c1=Math.floor((x+r)/3),d0=Math.floor((z-r)/3),d1=Math.floor((z+r)/3);
  for(let i=c0;i<=c1;i++)for(let j=d0;j<=d1;j++){const c=grid.get((i+100)*1000+j+100);if(c)for(const e of c)fn(e)}}
-function nearest(x,z,max,skip){let b=null,bd=max*max;for(const e of enemies){if(e.dead||(skip&&skip.has(e)))continue;const d=(e.x-x)**2+(e.z-z)**2;if(d<bd){bd=d;b=e}}return b}
+function nearest(x,z,max,skip){const bb=S.bossE;if(bb&&!bb.dead&&!(skip&&skip.has(bb))&&(bb.x-x)**2+(bb.z-z)**2<(Math.min(max,16)+bb.r)**2)return bb;let b=null,bd=max*max;for(const e of enemies){if(e.dead||(skip&&skip.has(e)))continue;const d=(e.x-x)**2+(e.z-z)**2;if(d<bd){bd=d;b=e}}return b}
 function hurtE(e,amt,kx,kz,noPop){
  if(e.dead)return;
  let crit=false;if(R()<.1){amt*=2;crit=true}
