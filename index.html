@@ -47,7 +47,7 @@ button:disabled{opacity:.4}
  <div class="bar" id="hpb"><i></i></div><div class="bar" id="xpb"><i></i></div>
  <div id="tm">0:00</div><div id="st"></div>
  <div id="bname"></div><div class="bar" id="boss"><i></i></div>
- <div id="wp"></div><div id="dash">اندفاع</div><div id="joy"><i></i></div>
+ <div id="wp"></div><button id="mute" style="position:absolute;top:60px;left:10px;pointer-events:auto;font-size:18px;padding:2px 10px">🔊</button><div id="dash">اندفاع</div><div id="joy"><i></i></div>
 </div>
 <div class="ov on" id="menu">
  <h1>𓂀 لعنة الفرعون</h1>
@@ -62,7 +62,7 @@ button:disabled{opacity:.4}
 </div>
 <div class="ov" id="lvl"><h2>⭐ ارتقيت! اختار قوة</h2><div class="cards" id="cards"></div></div>
 <div class="ov" id="pause"><h2>⏸ إيقاف مؤقت</h2><button id="resume">كمّل</button><br><button id="quit" style="font-size:15px">انسحب</button></div>
-<div class="ov" id="end"><h1 id="et"></h1><div id="es" class="sub" style="line-height:1.9;font-size:18px"></div><button id="endless" style="margin-bottom:10px;display:none">♾ كمّل بلا نهاية (زعماء أصعب)</button><br><button id="share" style="margin-bottom:10px">📤 شارك نتيجتك</button><br><button class="big" id="again">جولة جديدة</button></div>
+<div class="ov" id="end"><h1 id="et"></h1><div id="es" class="sub" style="line-height:1.9;font-size:18px"></div><button id="endless" style="margin-bottom:10px;display:none">♾ كمّل بلا نهاية (زعماء أصعب)</button><br><button id="share" style="margin-bottom:10px">📤 شارك نتيجتك</button> <button id="shareimg" style="margin-bottom:10px">📷 صورة النتيجة</button><br><button class="big" id="again">جولة جديدة</button></div>
 <script src="https://cdn.jsdelivr.net/npm/three@0.149.0/build/three.min.js"></script>
 <script>
 "use strict";
@@ -73,7 +73,7 @@ let SEEDF=null;function mul(a){return function(){a|=0;a=a+0x6D2B79F5|0;let t=Mat
 const R=()=>SEEDF?SEEDF():Math.random(), TAU=Math.PI*2, rr=(a,b)=>a+R()*(b-a);
 const touch=('ontouchstart' in window)||navigator.maxTouchPoints>0;
 /* ---------- save ---------- */
-let SAVE={coins:0,best:0,runs:0,kills:0,wins:0,maxCurse:1,curse:1,ach:{},daily:{d:'',best:0},up:{hp:0,dmg:0,spd:0,xp:0,rev:0}};
+let SAVE={coins:0,best:0,runs:0,kills:0,wins:0,maxCurse:1,curse:1,ach:{},mute:false,daily:{d:'',best:0},up:{hp:0,dmg:0,spd:0,xp:0,rev:0}};
 try{const s=JSON.parse(localStorage.getItem('pharaoh3d'));if(s){SAVE=Object.assign(SAVE,s);SAVE.up=Object.assign({hp:0,dmg:0,spd:0,xp:0,rev:0},s.up)}}catch(e){}
 const persist=()=>{try{localStorage.setItem('pharaoh3d',JSON.stringify(SAVE))}catch(e){}};
 const SHOP=[
@@ -87,7 +87,7 @@ const SHOP=[
 /* ---------- audio ---------- */
 let AC=null,lastSnd={};
 function snd(f,d,type,v,slide,key){
- if(TEST)return;try{
+ if(TEST||SAVE.mute)return;try{
  if(!AC)AC=new (window.AudioContext||window.webkitAudioContext)();
  const now=AC.currentTime;if(key&&lastSnd[key]&&now-lastSnd[key]<0.05)return;if(key)lastSnd[key]=now;
  const o=AC.createOscillator(),g=AC.createGain();o.type=type||'square';o.frequency.setValueAtTime(f,now);
@@ -446,9 +446,13 @@ function hud(){
  $('st').innerHTML=`المستوى ${P.lvl}${S.curse>1?' · لعنة '+S.curse:''}<br>☠ ${S.kills} &nbsp; 🪙 ${S.coins}`;
  const dd=$('dash');dd.classList.toggle('cd',P.dcd>0);dd.textContent=P.dcd>0?P.dcd.toFixed(1):'اندفاع'}
 /* ---------- flow ---------- */
+const SCALE=[110,130.8,146.8,164.8,196,220,261.6];let musT=0;
+function music(dt){musT-=dt;if(musT<=0){musT=rr(1.6,2.6);const base=SCALE[Math.floor(R()*SCALE.length)];snd(base,2.2,'sine',.025);if(R()<.5)snd(base*1.5,1.6,'triangle',.012);if(S.bossE)snd(base/2,1.2,'sawtooth',.02)}}
+const HINTS=[[2,'حرّك بـ WASD أو اسحب بصباعك'],[9,'الأسلحة بتضرب لوحدها. اجمع الجواهر الخضرا عشان ترتقي'],[20,'اندفاع بالمسافة (أو زرار الاندفاع) بيخلّيك ما تتأذيش لحظة']];
 function step(dt){
  if(S.state!=='play')return;
- S.t+=dt;director(dt);updatePlayer(dt);updateEnemies(dt);weapons(dt);updateProj(dt);updateEP(dt);updateTele(dt);updatePools(dt);updatePickups(dt);updFx(dt);
+ if(SAVE.runs===0&&!S.auto){for(const h of HINTS){if(S.t<h[0]&&S.t+dt>=h[0])banner(h[1])}}
+ music(dt);S.t+=dt;director(dt);updatePlayer(dt);updateEnemies(dt);weapons(dt);updateProj(dt);updateEP(dt);updateTele(dt);updatePools(dt);updatePickups(dt);updFx(dt);
  if(S.state==='play'&&S.pending>0){
   if(S.auto){const o=offerUpgrades();if(o.length)pickUp(o[0]);else S.pending--}
   else showLevel()}}
@@ -475,16 +479,24 @@ const MODS=[null,['🐜 يوم الجعارين: أعداء أكتر بـ50%'],[
 const DMOD=1+DAYN%4;let DAILY=false;
 function renderDaily(){const b=$('daily');const best=SAVE.daily.d===TODAY?SAVE.daily.best:0;b.innerHTML='';const x=document.createElement('button');x.style.cssText='font-size:15px;padding:6px 14px'+(DAILY?';outline:3px solid #fff':'');x.textContent=(DAILY?'✅ ':'')+'🗓 تحدي النهارده (ذهب ×1.5)';x.onclick=()=>{DAILY=!DAILY;renderDaily()};b.appendChild(x);
  const n=document.createElement('div');n.className='sub';n.style.margin='4px';n.textContent=MODS[DMOD][0]+(best?` · أفضل نتيجتك النهارده ${Math.floor(best/60)}:${String(best%60).padStart(2,'0')}`:'');b.appendChild(n)}
+function renderMute(){$('mute').textContent=SAVE.mute?'🔇':'🔊'}
+$('mute').onclick=e=>{e.stopPropagation();SAVE.mute=!SAVE.mute;persist();renderMute()};
 function renderMap(){const b=$('maps');b.innerHTML='الخريطة: ';[['1','🏺 المقبرة'],['2','🏜 صحراء العواصف']].forEach(([k,n])=>{const x=document.createElement('button');const lock=k==='2'&&!(SAVE.wins>0);x.style.cssText='font-size:15px;padding:5px 12px;margin:0 3px'+((SAVE.map||1)==k?';outline:3px solid #fff':'');x.textContent=lock?'🔒 '+n+' (اكسب مرة)':n;x.disabled=lock;x.onclick=()=>{SAVE.map=+k;persist();renderMap()};b.appendChild(x)})}
-function renderCurse(){renderAch();renderDaily();renderMap();const b=$('curse');b.innerHTML='مستوى اللعنة: ';for(let i=1;i<=3;i++){const x=document.createElement('button');x.style.cssText='font-size:15px;padding:5px 14px;margin:0 3px';x.textContent=i>SAVE.maxCurse?'🔒':'☠'.repeat(i);x.disabled=i>SAVE.maxCurse;if(i===Math.min(SAVE.curse,SAVE.maxCurse))x.style.outline='3px solid #fff';x.onclick=()=>{SAVE.curse=i;persist();renderCurse()};b.appendChild(x)}
+function renderCurse(){renderMute();renderAch();renderDaily();renderMap();const b=$('curse');b.innerHTML='مستوى اللعنة: ';for(let i=1;i<=3;i++){const x=document.createElement('button');x.style.cssText='font-size:15px;padding:5px 14px;margin:0 3px';x.textContent=i>SAVE.maxCurse?'🔒':'☠'.repeat(i);x.disabled=i>SAVE.maxCurse;if(i===Math.min(SAVE.curse,SAVE.maxCurse))x.style.outline='3px solid #fff';x.onclick=()=>{SAVE.curse=i;persist();renderCurse()};b.appendChild(x)}
  const n=document.createElement('div');n.className='sub';n.style.margin='4px';n.textContent=SAVE.maxCurse<3?'كسّر اللعنة لتفتح مستوى أصعب (ذهب أكتر ×1.5 / ×2)':'أعلى مستوى لعنة مفتوح';b.appendChild(n)}
 $('endless').onclick=()=>{$('end').classList.remove('on');$('hud').classList.add('on');S.endless=1;S.state='play';S.nextBoss=S.t+60;S.eb=0;P.inv=3;P.hp=P.mhp;S.winT=0;banner('♾ اللانهائي! زعيم كل 2.5 دقيقة')};
+function resultCanvas(){const c=document.createElement('canvas');c.width=800;c.height=450;const x=c.getContext('2d');const g=x.createLinearGradient(0,0,0,450);g.addColorStop(0,'#2a1240');g.addColorStop(1,'#b8741a');x.fillStyle=g;x.fillRect(0,0,800,450);
+ x.strokeStyle='#ffd35a';x.lineWidth=6;x.strokeRect(12,12,776,426);x.textAlign='center';x.fillStyle='#ffd35a';x.font='bold 56px Tahoma,Arial';x.fillText('𓂀 لعنة الفرعون',400,95);
+ x.fillStyle='#fff';x.font='bold 40px Tahoma,Arial';const t=Math.floor(S.t);x.fillText(S.won?'☀️ كسرت اللعنة!':'💀 اللعنة أخدتني',400,175);
+ x.font='34px Tahoma,Arial';x.fillText(`⏱ ${Math.floor(t/60)}:${String(t%60).padStart(2,'0')}   ☠ ${S.kills}   ⭐ ${P.lvl}`,400,250);
+ x.font='26px Tahoma,Arial';x.fillText(`لعنة ${S.curse}${S.daily?' · تحدي اليوم':''}${S.endless?' · لانهائي':''}`,400,305);x.fillStyle='#ffe9a8';x.font='22px Tahoma,Arial';x.fillText('mohamedelsayed16399-bit.github.io/pharaoh-curse-3d',400,400);return c}
+$('shareimg').onclick=()=>{const c=resultCanvas();c.toBlob(b=>{const f=new File([b],'pharaoh-curse.png',{type:'image/png'});if(navigator.canShare&&navigator.canShare({files:[f]})){navigator.share({files:[f],text:S.shareTxt||''}).catch(()=>{})}else{const a=document.createElement('a');a.href=URL.createObjectURL(b);a.download='pharaoh-curse.png';a.click()}})};
 $('share').onclick=()=>{const t=S.shareTxt||'';if(navigator.share){navigator.share({text:t}).catch(()=>{})}else if(navigator.clipboard){navigator.clipboard.writeText(t);$('share').textContent='✅ اتنسخ'}};
 function startRun(){SEEDF=DAILY?mul(DSEED):null;newRun();S.daily=DAILY;if(DAILY){S.mod=DMOD;if(DMOD===2){P.mhp*=.6;P.hp=P.mhp;P.dmgM*=1.5}if(DMOD===3)P.xpM*=1.5}else S.mod=0;$('menu').classList.remove('on');$('end').classList.remove('on');$('hud').classList.add('on');$('dash').style.display=touch?'flex':'none';snd(300,.3,'sine',.06,2)}
 $('play').onclick=startRun;$('again').onclick=()=>{$('end').classList.remove('on');$('menu').classList.add('on');$('share').textContent='📤 شارك نتيجتك';renderShop();renderCurse()};
 function togglePause(){if(!S)return;if(S.state==='play'){S.state='pause';$('pause').classList.add('on')}else if(S.state==='pause'){S.state='play';$('pause').classList.remove('on')}}
 $('resume').onclick=togglePause;$('quit').onclick=()=>{$('pause').classList.remove('on');S.state='play';P.hp=0;gameOver()};
-addEventListener('keydown',e=>{if(S&&S.state==='level'&&'123'.includes(e.key)){const c=$('cards').children[+e.key-1];if(c)c.click()}const k=e.key.length===1?e.key.toLowerCase():e.key;if(k===' '||k.startsWith('Arrow'))e.preventDefault();if((k==='p'||k==='Escape')&&!keys[k])togglePause();keys[k]=true});
+addEventListener('keydown',e=>{if(S&&S.state==='level'&&'123'.includes(e.key)){const c=$('cards').children[+e.key-1];if(c)c.click()}const k=e.key.length===1?e.key.toLowerCase():e.key;if(k===' '||k.startsWith('Arrow'))e.preventDefault();if((k==='p'||k==='Escape')&&!keys[k])togglePause();if(k==='m'&&!keys[k]){SAVE.mute=!SAVE.mute;persist();renderMute()}keys[k]=true});
 addEventListener('keyup',e=>{keys[e.key.length===1?e.key.toLowerCase():e.key]=false});
 document.addEventListener('visibilitychange',()=>{if(document.hidden&&S&&S.state==='play')togglePause()});
 {const joy=$('joy'),knob=joy.firstChild;let id=null,ox=0,oy=0;
