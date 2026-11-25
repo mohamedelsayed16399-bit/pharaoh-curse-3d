@@ -57,6 +57,7 @@ button:disabled{opacity:.4}
  <div style="margin-top:12px" id="mstats"></div>
  <h2>معبد التطوير 🪙 <span id="coins">0</span></h2>
  <div id="shop"></div>
+ <div class="sub" id="best" style="max-width:640px"></div>
  <div class="sub" id="achs" style="max-width:640px"></div>
  <div class="sub" id="help"></div>
 </div>
@@ -73,7 +74,7 @@ let SEEDF=null;function mul(a){return function(){a|=0;a=a+0x6D2B79F5|0;let t=Mat
 const R=()=>SEEDF?SEEDF():Math.random(), TAU=Math.PI*2, rr=(a,b)=>a+R()*(b-a);
 const touch=('ontouchstart' in window)||navigator.maxTouchPoints>0;
 /* ---------- save ---------- */
-let SAVE={coins:0,best:0,runs:0,kills:0,wins:0,maxCurse:1,curse:1,ach:{},mute:false,daily:{d:'',best:0},up:{hp:0,dmg:0,spd:0,xp:0,rev:0}};
+let SAVE={coins:0,best:0,runs:0,kills:0,wins:0,maxCurse:1,curse:1,ach:{},mute:false,seen:{},daily:{d:'',best:0},up:{hp:0,dmg:0,spd:0,xp:0,rev:0}};
 try{const s=JSON.parse(localStorage.getItem('pharaoh3d'));if(s){SAVE=Object.assign(SAVE,s);SAVE.up=Object.assign({hp:0,dmg:0,spd:0,xp:0,rev:0},s.up)}}catch(e){}
 const persist=()=>{try{localStorage.setItem('pharaoh3d',JSON.stringify(SAVE))}catch(e){}};
 const SHOP=[
@@ -193,8 +194,9 @@ function newRun(){
  $('boss').style.display='none';$('bname').style.display='none';
  const BI=[[0x1d1030,0x2a1830,0xffffff],[0x08142a,0x0c1c38,0x7a9aff],[0x2a0808,0x3a0c0c,0xff6a5a]][S.curse-1];
  scene.background.setHex(BI[0]);scene.fog.color.setHex(BI[1]);ground.material.color.setHex(BI[2]);
- S.map=SAVE.map===2&&(SAVE.wins>0||Q.get('map'))?2:1;S.wind=null;S.windT=25;
+ S.map=SAVE.map===3&&(SAVE.wins>1||Q.get('map'))?3:SAVE.map===2&&(SAVE.wins>0||Q.get('map'))?2:1;S.lotusT=25;S.wind=null;S.windT=25;
  if(S.map===2){ground.material.color.multiplyScalar(.9).lerp(new THREE.Color(0xff9a60),.35);scene.fog.color.lerp(new THREE.Color(0x6a3018),.5);scene.background.lerp(new THREE.Color(0x4a2010),.5);for(let i=0;i<7;i++){const a=R()*TAU,d=rr(8,AR-8),r=rr(3.5,5.5);const m=new THREE.Mesh(GEO.disc,new THREE.MeshBasicMaterial({color:0x3a2208,transparent:true,opacity:.75,depthWrite:false}));m.rotation.x=-Math.PI/2;m.scale.setScalar(r);m.position.set(Math.cos(a)*d,.06,Math.sin(a)*d);scene.add(m);sands.push({x:m.position.x,z:m.position.z,r,m})}}
+ if(S.map===3){ground.material.color.lerp(new THREE.Color(0x70c0a0),.45);scene.fog.color.setHex(0x0c3a38);scene.background.setHex(0x06242a);const w=new THREE.Mesh(new THREE.PlaneGeometry(200,12),new THREE.MeshBasicMaterial({color:0x2a7aaa,transparent:true,opacity:.75,depthWrite:false}));w.rotation.x=-Math.PI/2;w.position.y=.07;scene.add(w);sands.push({x:0,z:0,r:0,m:w,water:true})}
  renderWeapons();
 }
 const cdm=()=>Math.pow(.93,P.p.cdr);
@@ -204,7 +206,7 @@ function spawnEnemy(type,x,z,elite){
  const d=ET[type];const hpm=1+S.t/100*.75+(S.t>240?(S.t-240)/110:0);
  const m=d.mk();m.position.set(x,0,z);scene.add(m);
  const e={type,x,z,vx:0,vz:0,hp:d.hp*hpm*(elite?3:1)*(S.map===2?1.2:1)*(1+.25*(S.curse-1))*(S.mod===3?1.3:1),mhp:0,sp:d.sp*(1+Math.min(.35,S.t/900))*(elite?1.1:1)*(S.mod===4?1.2:1),dmg:d.dmg*(1+S.t/320),r:d.r*(elite?1.3:1),m,fl:0,t:rr(0,3),st:0,tt:rr(.5,2),elite:!!elite,ph:R()*6};
- e.mhp=e.hp;if(elite){m.scale.multiplyScalar(1.3);const crown=new THREE.Mesh(GEO.ring,new THREE.MeshBasicMaterial({color:0xffd24a,side:2}));crown.rotation.x=-Math.PI/2;crown.scale.setScalar(d.r*2);crown.position.y=.1;m.add(crown)}
+ e.mhp=e.hp;if(elite){e.aff=['fast','armor','boom'][Math.floor(R()*3)];if(e.aff==='fast')e.sp*=1.5;if(e.aff==='armor'){e.hp*=2;e.mhp=e.hp}m.scale.multiplyScalar(1.3);const crown=new THREE.Mesh(GEO.ring,new THREE.MeshBasicMaterial({color:e.aff==='fast'?0xff4040:e.aff==='armor'?0x4a9aff:0xff9a20,side:2}));crown.rotation.x=-Math.PI/2;crown.scale.setScalar(d.r*2);crown.position.y=.1;m.add(crown)}
  enemies.push(e);return e}
 function spawnBoss(final){
  const x=Math.max(-AR+4,Math.min(AR-4,P.x+rr(-1,1)*10)),z=Math.max(-AR+4,Math.min(AR-4,P.z-20));
@@ -212,9 +214,10 @@ function spawnBoss(final){
  const hp=(final?14000:3800)*(1+.15*(S.curse-1));e.hp=e.mhp=hp;e.boss=true;e.final=final;e.dmg=final?26:20;e.sp=final?2.8:2.2;
  e.m.scale.setScalar(final?1.35:1);
  if(final)e.m.children.forEach(c=>{if(c.userData.base&&c.userData.base.color&&c.userData.base.color.getHex()===0x1a1030){c.material=c.userData.base=mat(0x4a0a10,0x400010)}});
+ if(S.map===3&&!final){e.variant='sobk';$('bname').textContent='☠ سوبك الملك';e.m.children.forEach(c=>{if(c.userData.base&&c.userData.base.color&&c.userData.base.color.getHex()===0x1a1030){c.material=c.userData.base=mat(0x1a6a3a,0x0a3a1a)}})}
  if(S.map===2&&!final){e.variant='sekh';$('bname').textContent='☠ سخمت اللبؤة';e.m.children.forEach(c=>{if(c.userData.base&&c.userData.base.color&&c.userData.base.color.getHex()===0x1a1030){c.material=c.userData.base=mat(0x8a3a10,0x602000)}})}
  e.at=3;e.slamT=5;e.sumT=8;S.bossE=e;
- $('boss').style.display='block';$('bname').style.display='block';$('bname').textContent=final?'☠ أنوبيس العظيم':(S.map===2?'☠ سخمت اللبؤة':'☠ حارس المقبرة');
+ $('boss').style.display='block';$('bname').style.display='block';$('bname').textContent=final?'☠ أنوبيس العظيم':(S.map===3?'☠ سوبك الملك':S.map===2?'☠ سخمت اللبؤة':'☠ حارس المقبرة');
  banner(final?'أنوبيس العظيم ظهر!':'حارس المقبرة ظهر!');snd(90,.8,'sawtooth',.12,.5)}
 const BOSS1=+(Q.get('b1')||240),BOSS2=+(Q.get('b2')||480);
 function director(dt){
@@ -227,7 +230,7 @@ function director(dt){
  const cap=Math.min(190,60+t/3);
  while(S.sp>=1){S.sp-=1;if(enemies.length>=cap)continue;
   const a=R()*TAU,d=rr(24,30);let x=P.x+Math.cos(a)*d,z=P.z+Math.sin(a)*d;const rd=Math.hypot(x,z);if(rd>AR-2){x*=(AR-2)/rd;z*=(AR-2)/rd}
-  const w=[['scarab',10]];if(t>25)w.push(['mummy',7]);if(t>80)w.push(['jackal',5]);if(t>140)w.push(['priest',4]);if(t>200)w.push(['golem',1.5]);if(t>170)w.push(['sobek',3]);if(t>240)w.push(['wraith',3]);
+  const w=[['scarab',10]];if(t>25)w.push(['mummy',7]);if(t>80)w.push(['jackal',5]);if(t>140)w.push(['priest',4]);if(t>200)w.push(['golem',1.5]);if(t>(S.map===3?40:170))w.push(['sobek',S.map===3?7:3]);if(t>240)w.push(['wraith',3]);
   let tot=0;for(const q of w)tot+=q[1];let k=R()*tot,ty='scarab';for(const q of w){if((k-=q[1])<0){ty=q[0];break}}
   const el=t>100&&R()<Math.min(.06,t/6000);
   if(ty==='scarab'&&R()<.5){for(let i=0;i<4;i++)spawnEnemy('scarab',x+rr(-2,2),z+rr(-2,2))}else spawnEnemy(ty,x,z,el)}
@@ -247,12 +250,13 @@ function hurtE(e,amt,kx,kz,noPop){
  snd(crit?500:260,.06,'square',.03,.5,'hit');
  if(e.hp<=0)killE(e)}
 function killE(e){
- e.dead=true;S.kills++;scene.remove(e.m);
+ e.dead=true;S.kills++;SAVE.seen[e.boss?'boss':e.type]=(SAVE.seen[e.boss?'boss':e.type]||0)+1;scene.remove(e.m);
  const d=ET[e.type];
  if(e.boss){S.bossE=null;$('boss').style.display='none';$('bname').style.display='none';
   for(let i=0;i<14;i++)dropGem(e.x+rr(-3,3),e.z+rr(-3,3),20);for(let i=0;i<10;i++)dropCoin(e.x+rr(-3,3),e.z+rr(-3,3),5);
   dropChest(e.x,e.z);burst(e.x,1.5,e.z,40,0xffd24a,10);S.shake=1.2;snd(70,1,'sawtooth',.15,.3);
   if(e.final&&!S.endless){win();return}banner('الحارس سقط! خد الكنز');return}
+ if(e.aff==='boom'){addTele(e.x,e.z,3.5,.8,e.dmg*1.2)}
  dropGem(e.x,e.z,d.xp*(e.elite?4:1));
  if(e.elite)dropChest(e.x,e.z);
  if(R()<.18)dropCoin(e.x,e.z,1);
@@ -295,13 +299,14 @@ function hurtP(d){
  if(GOD){P.inv=.3;return}
  P.hp-=d;try{navigator.vibrate&&navigator.vibrate(40)}catch(e){}P.inv=.7;P.hurtT=.2;S.shake=Math.max(S.shake,.35);snd(120,.2,'sawtooth',.08,.5);dnum(P.x,P.z,Math.round(d),true);
  if(P.hp<=0){if(P.rev>0){P.rev--;P.hp=P.mhp*.6;P.inv=2.5;ringFx(P.x,P.z,12,0xffffff,.6);banner('عنخ الإحياء! حياة تانية');for(const e of enemies)if(!e.boss&&Math.hypot(e.x-P.x,e.z-P.z)<12){e.vx+=(e.x-P.x)*2;e.vz+=(e.z-P.z)*2}}else gameOver()}}
-function inSand(x,z){for(const q of sands)if((x-q.x)**2+(z-q.z)**2<q.r*q.r)return true;return false}
-function mapTick(dt){if(S.map!==2)return;S.windT-=dt;if(S.windT<=0&&!S.wind){S.windT=40;const a=R()*TAU;S.wind={t:6,dx:Math.cos(a),dz:Math.sin(a)};banner('🌪 عاصفة رملية! بتزقّك')}
+function inSand(x,z){for(const q of sands){if(q.water)continue;if((x-q.x)**2+(z-q.z)**2<q.r*q.r)return true}return false}
+const inWater=z=>S.map===3&&Math.abs(z)<6;
+function mapTick(dt){if(S.map===3){S.lotusT-=dt;if(S.lotusT<=0){S.lotusT=30;dropHeart(rr(-30,30),rr(-4,4));banner('🪷 لوتس شفاء ظهر في النهر')}}if(S.map!==2)return;S.windT-=dt;if(S.windT<=0&&!S.wind){S.windT=40;const a=R()*TAU;S.wind={t:6,dx:Math.cos(a),dz:Math.sin(a)};banner('🌪 عاصفة رملية! بتزقّك')}
  if(S.wind){S.wind.t-=dt;const w=S.wind;if(P.dash<=0){P.x+=w.dx*2.6*dt;P.z+=w.dz*2.6*dt}for(const e of enemies){if(!e.boss){e.x+=w.dx*2.2*dt;e.z+=w.dz*2.2*dt}}if(R()<.7)burst(P.x+rr(-12,12),rr(.5,3),P.z+rr(-9,9),1,0xd8b070,5);if(w.t<=0)S.wind=null}}
 function updatePlayer(dt){
  mapTick(dt);const v=inputVec();
  if(P.dash>0){P.dash-=dt;P.x+=P.dvx*dt;P.z+=P.dvz*dt;burst(P.x,.5,P.z,1,0x7de0ff,1)}
- else{const sm=sands.length&&inSand(P.x,P.z)?.55:1;P.x+=v.x*P.sp*sm*dt;P.z+=v.z*P.sp*sm*dt;if(v.x||v.z){P.fx=v.x;P.fz=v.z}}
+ else{const sm=(sands.length&&inSand(P.x,P.z)?.55:1)*(inWater(P.z)?.65:1);P.x+=v.x*P.sp*sm*dt;P.z+=v.z*P.sp*sm*dt;if(v.x||v.z){P.fx=v.x;P.fz=v.z}}
  if((keys[' ']||keys.Shift||S.dashReq)&&P.dcd<=0&&P.dash<=0){const l=Math.hypot(v.x,v.z),dx=l>.1?v.x/l:P.fx,dz=l>.1?v.z/l:P.fz;P.dvx=dx*24;P.dvz=dz*24;P.dash=.2;P.dcd=2;P.inv=Math.max(P.inv,.3);snd(300,.15,'sine',.06,2);ringFx(P.x,P.z,2,0x7de0ff,.3)}
  keys[' ']=false;S.dashReq=false;P.dcd-=dt;
  const rd=Math.hypot(P.x,P.z);if(rd>AR-1.5){P.x*=(AR-1.5)/rd;P.z*=(AR-1.5)/rd}
@@ -324,7 +329,7 @@ function updateEnemies(dt){
   else if(e.type==='sobek'){e.tt-=dt;if(e.tt<=0){e.tt=3.5;addPool(e.x,e.z)}}
   else if(e.boss){bossAI(e,dt,nx,nz,d);if(e.dst===1){sp=0;e.cx=nx;e.cz=nz}else if(e.dst===2){sp=18;mx=e.cx;mz=e.cz}}
   else if(e.type==='scarab'){const w=Math.sin(e.t*8+e.ph)*.5;mx=nx-nz*w;mz=nz+nx*w}
-  if(sands.length&&inSand(e.x,e.z))sp*=.55;e.x+=(mx*sp+e.vx)*dt;e.z+=(mz*sp+e.vz)*dt;e.vx*=Math.pow(.02,dt);e.vz*=Math.pow(.02,dt);
+  if(sands.length&&inSand(e.x,e.z))sp*=.55;if(S.map===3&&inWater(e.z))sp*=e.type==='sobek'?1.8:.8;e.x+=(mx*sp+e.vx)*dt;e.z+=(mz*sp+e.vz)*dt;e.vx*=Math.pow(.02,dt);e.vz*=Math.pow(.02,dt);
   const rd=Math.hypot(e.x,e.z);if(rd>AR){e.x*=AR/rd;e.z*=AR/rd}
   e.m.position.x=e.x;e.m.position.z=e.z;e.m.rotation.y=Math.atan2(mx,mz);
   if(!e.boss)e.m.position.y=Math.abs(Math.sin(e.t*(e.type==='scarab'?14:5)))*(e.type==='scarab'?.1:.2);
@@ -337,7 +342,8 @@ function bossAI(e,dt,nx,nz,d){
  e.m.position.y=Math.sin(e.t*2)*.3;
  const enr=e.hp<e.mhp*.5;if(enr&&!e.enraged){e.enraged=true;banner('الحارس غضبان!');e.sp*=1.4;snd(60,.8,'sawtooth',.12,.4)}
  const f=enr?.65:1;
- if(e.variant==='sekh'){e.cdt=(e.cdt===undefined?4:e.cdt)-dt;if(!e.dst&&e.cdt<=0){e.dst=1;e.cdt=.7;ringFx(e.x,e.z,3,0xff4040,.7)}else if(e.dst===1&&e.cdt<=0){e.dst=2;e.cdt=.8}else if(e.dst===2&&e.cdt<=0){e.dst=0;e.cdt=5}}
+ if(e.variant==='sobk'){e.pt=(e.pt===undefined?2:e.pt)-dt;if(e.pt<=0){e.pt=2.5;addPool(e.x+rr(-3,3),e.z+rr(-3,3));addPool(P.x+rr(-3,3),P.z+rr(-3,3))}}
+ if(e.variant==='sekh'||e.variant==='sobk'){e.cdt=(e.cdt===undefined?4:e.cdt)-dt;if(!e.dst&&e.cdt<=0){e.dst=1;e.cdt=.7;ringFx(e.x,e.z,3,0xff4040,.7)}else if(e.dst===1&&e.cdt<=0){e.dst=2;e.cdt=.8}else if(e.dst===2&&e.cdt<=0){e.dst=0;e.cdt=5}}
  e.at-=dt;if(e.at<=0){e.at=3.2*f;const n=e.final?18:12,off=R()*TAU;for(let i=0;i<n;i++){const a=off+i/n*TAU;eprojs.push(mkEP(e.x,e.z,Math.cos(a)*6.5,Math.sin(a)*6.5,e.dmg*.5,0xff5030))}snd(180,.4,'sawtooth',.07,.4)}
  if(e.final||enr){e.sp2=(e.sp2||0)-dt;if(e.sp2<=0){e.sp2=.18;e.ang=(e.ang||0)+.5;for(let k=0;k<(e.final?2:1);k++){const a=e.ang+k*Math.PI;eprojs.push(mkEP(e.x,e.z,Math.cos(a)*5.5,Math.sin(a)*5.5,e.dmg*.35,0xffb040))}}}
  e.slamT-=dt;if(e.slamT<=0){e.slamT=4.2*f;const n=e.final?3:1;for(let i=0;i<n;i++){addTele(P.x+(i?rr(-6,6):0),P.z+(i?rr(-6,6):0),5,1.1,e.dmg*1.2)}}
@@ -378,7 +384,7 @@ function weapons(dt){
   while(zones.length<n){const m=new THREE.Mesh(new THREE.CylinderGeometry(1.8,.5,3.4,14,1,true),new THREE.MeshBasicMaterial({color:0xe6c27a,transparent:true,opacity:.5,side:2,depthWrite:false}));scene.add(m);zones.push({m,x:P.x+rr(-4,4),z:P.z+rr(-4,4),tk:0,a:R()*6})}
   for(const z of zones){const t=nearest(z.x,z.z,22);const tx=t?t.x:P.x,tz=t?t.z:P.z,dx=tx-z.x,dz=tz-z.z,d=Math.hypot(dx,dz)||1;z.x+=dx/d*Math.min(d,3.6)*dt*(d>1?1:.2);z.z+=dz/d*Math.min(d,3.6)*dt*(d>1?1:.2);z.a+=dt*9;
    const rad=(2.2+.25*L)*(P.evo.storm?1.4:1);z.m.position.set(z.x,1.7,z.z);z.m.rotation.y=z.a;z.m.scale.set(rad/1.8*1.1,1,rad/1.8*1.1);z.tk-=dt;
-   if(z.tk<=0){z.tk=.35;near(z.x,z.z,rad+2,e=>{if(e.dead)return;const ex=z.x-e.x,ez=z.z-e.z,ed=Math.hypot(ex,ez);if(ed<rad+e.r){hurtE(e,pdmg(6+3*L),ex/(ed||1)*(L>=5?-.3:-.1),ez/(ed||1)*(L>=5?-.3:-.1))}})}
+   if(z.tk<=0){z.tk=.35;snd(90,.2,'sawtooth',.02,.7,'st');near(z.x,z.z,rad+2,e=>{if(e.dead)return;const ex=z.x-e.x,ez=z.z-e.z,ed=Math.hypot(ex,ez);if(ed<rad+e.r){hurtE(e,pdmg(6+3*L),ex/(ed||1)*(L>=5?-.3:-.1),ez/(ed||1)*(L>=5?-.3:-.1))}})}
    near(z.x,z.z,rad+3,e=>{if(e.dead||e.boss)return;const ex=z.x-e.x,ez=z.z-e.z,ed=Math.hypot(ex,ez);if(ed<rad+3&&ed>.5){e.x+=ex/ed*dt*(L>=5?4:2.5);e.z+=ez/ed*dt*(L>=5?4:2.5)}})}}
  if(w.spear){const L=w.spear;P.cd.spear-=dt;if(P.cd.spear<=0){P.cd.spear=(3.2-.3*L)*cdm();const t=nearest(P.x,P.z,28);const base=t?Math.atan2(t.z-P.z,t.x-P.x):Math.atan2(P.fz,P.fx);const n=L>=5?3:1;for(let i=0;i<n;i++){const a=base+(i-(n-1)/2)*.35;const m=new THREE.Mesh(GEO.cone,new THREE.MeshBasicMaterial({color:0xfff0a0}));m.scale.set(.35,2.6,.35);m.rotation.set(Math.PI/2,0,0);const g=new THREE.Group();g.add(m);g.rotation.y=-a+Math.PI/2;g.position.set(P.x,1.2,P.z);scene.add(g);projs.push({x:P.x,z:P.z,vx:Math.cos(a)*26,vz:Math.sin(a)*26,dmg:pdmg(26+9*L),pi:99,life:.7+.12*L,m:g,hit:new Set(),home:false})}snd(250,.25,'sawtooth',.06,2.2,'sp')}}
  if(w.bolt){const L=w.bolt;P.cd.bolt-=dt;if(P.cd.bolt<=0){P.cd.bolt=(2-.15*L)*cdm();
@@ -473,7 +479,8 @@ function renderShop(){
   d.innerHTML=`<b>${s.n}</b> ${'★'.repeat(lv)}${'☆'.repeat(s.max-lv)}<br>${s.d}<br>`;const b=document.createElement('button');b.textContent=done?'مكتمل':`🪙 ${s.c[lv]}`;b.disabled=done||SAVE.coins<s.c[lv];
   b.onclick=()=>{SAVE.coins-=s.c[lv];SAVE.up[s.k]=lv+1;persist();renderShop();snd(700,.15,'triangle',.06,1.5)};d.appendChild(b);box.appendChild(d)}}
 $('help').innerHTML=touch?'اسحب في الشاشة للحركة · زرار الاندفاع تحت · الأسلحة بتضرب لوحدها':'<span class="k">WASD</span> أو الأسهم للحركة · <span class="k">Space</span> اندفاع · <span class="k">P</span> إيقاف · الأسلحة بتضرب لوحدها';
-function renderAch(){$('achs').innerHTML='الإنجازات: '+ACH.map(a=>`<span style="opacity:${SAVE.ach[a[0]]?1:.35};margin:0 6px;white-space:nowrap">${a[1]}</span>`).join(' ')}
+const BEAST={scarab:'🪲 جعران',mummy:'🧟 مومياء',jackal:'🐺 ابن آوى',priest:'🔮 كاهن',golem:'🗿 جولم',sobek:'🐊 تمساح',wraith:'👻 شبح',boss:'👑 زعيم'};
+function renderAch(){$('best').innerHTML='الموسوعة: '+Object.keys(BEAST).map(k=>SAVE.seen[k]?`<span style="margin:0 6px;white-space:nowrap">${BEAST[k]} ×${SAVE.seen[k]}</span>`:`<span style="opacity:.35;margin:0 6px">❓ ؟؟؟</span>`).join(' ');$('achs').innerHTML='الإنجازات: '+ACH.map(a=>`<span style="opacity:${SAVE.ach[a[0]]?1:.35};margin:0 6px;white-space:nowrap">${a[1]}</span>`).join(' ')}
 const DAYN=Math.floor((Date.now()+2*3600e3)/864e5),DSEED=DAYN*7919+13,TODAY=new Date(Date.now()+2*3600e3).toISOString().slice(0,10);
 const MODS=[null,['🐜 يوم الجعارين: أعداء أكتر بـ50%'],['💎 قلب زجاجي: صحة أقل بـ40% وضرر أعلى بـ50%'],['📜 يوم الحكمة: خبرة ×1.5 وأعداء أمتن 30%'],['⚡ يوم العاصفة: كل الأعداء أسرع 20%']];
 const DMOD=1+DAYN%4;let DAILY=false;
@@ -481,7 +488,7 @@ function renderDaily(){const b=$('daily');const best=SAVE.daily.d===TODAY?SAVE.d
  const n=document.createElement('div');n.className='sub';n.style.margin='4px';n.textContent=MODS[DMOD][0]+(best?` · أفضل نتيجتك النهارده ${Math.floor(best/60)}:${String(best%60).padStart(2,'0')}`:'');b.appendChild(n)}
 function renderMute(){$('mute').textContent=SAVE.mute?'🔇':'🔊'}
 $('mute').onclick=e=>{e.stopPropagation();SAVE.mute=!SAVE.mute;persist();renderMute()};
-function renderMap(){const b=$('maps');b.innerHTML='الخريطة: ';[['1','🏺 المقبرة'],['2','🏜 صحراء العواصف']].forEach(([k,n])=>{const x=document.createElement('button');const lock=k==='2'&&!(SAVE.wins>0);x.style.cssText='font-size:15px;padding:5px 12px;margin:0 3px'+((SAVE.map||1)==k?';outline:3px solid #fff':'');x.textContent=lock?'🔒 '+n+' (اكسب مرة)':n;x.disabled=lock;x.onclick=()=>{SAVE.map=+k;persist();renderMap()};b.appendChild(x)})}
+function renderMap(){const b=$('maps');b.innerHTML='الخريطة: ';[['1','🏺 المقبرة'],['2','🏜 صحراء العواصف'],['3','🌊 النيل']].forEach(([k,n])=>{const x=document.createElement('button');const lock=(k==='2'&&!(SAVE.wins>0))||(k==='3'&&!(SAVE.wins>1));x.style.cssText='font-size:15px;padding:5px 12px;margin:0 3px'+((SAVE.map||1)==k?';outline:3px solid #fff':'');x.textContent=lock?'🔒 '+n+' (اكسب '+(k==='3'?'مرتين':'مرة')+')':n;x.disabled=lock;x.onclick=()=>{SAVE.map=+k;persist();renderMap()};b.appendChild(x)})}
 function renderCurse(){renderMute();renderAch();renderDaily();renderMap();const b=$('curse');b.innerHTML='مستوى اللعنة: ';for(let i=1;i<=3;i++){const x=document.createElement('button');x.style.cssText='font-size:15px;padding:5px 14px;margin:0 3px';x.textContent=i>SAVE.maxCurse?'🔒':'☠'.repeat(i);x.disabled=i>SAVE.maxCurse;if(i===Math.min(SAVE.curse,SAVE.maxCurse))x.style.outline='3px solid #fff';x.onclick=()=>{SAVE.curse=i;persist();renderCurse()};b.appendChild(x)}
  const n=document.createElement('div');n.className='sub';n.style.margin='4px';n.textContent=SAVE.maxCurse<3?'كسّر اللعنة لتفتح مستوى أصعب (ذهب أكتر ×1.5 / ×2)':'أعلى مستوى لعنة مفتوح';b.appendChild(n)}
 $('endless').onclick=()=>{$('end').classList.remove('on');$('hud').classList.add('on');S.endless=1;S.state='play';S.nextBoss=S.t+60;S.eb=0;P.inv=3;P.hp=P.mhp;S.winT=0;banner('♾ اللانهائي! زعيم كل 2.5 دقيقة')};
