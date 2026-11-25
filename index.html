@@ -48,6 +48,7 @@ button:disabled{opacity:.4}
  <div id="tm">0:00</div><div id="st"></div>
  <div id="vig" style="position:fixed;inset:0;pointer-events:none;z-index:4;opacity:0;box-shadow:inset 0 0 140px 40px rgba(200,0,0,.75)"></div>
  <div id="ult" style="position:fixed;left:18px;bottom:110px;width:74px;height:74px;border-radius:50%;border:3px solid #ffd24a;color:#fff;font:bold 18px Tahoma;text-align:center;line-height:74px;z-index:5;pointer-events:auto;display:none;cursor:pointer;user-select:none">0%</div>
+ <canvas id="mm" width="130" height="130" style="position:fixed;right:10px;top:56px;width:130px;height:130px;border-radius:50%;background:rgba(10,6,20,.55);border:2px solid #b08a50;z-index:4;pointer-events:none"></canvas>
  <div id="bname"></div><div class="bar" id="boss"><i></i></div>
  <div id="wp"></div><button id="mute" style="position:absolute;top:60px;left:10px;pointer-events:auto;font-size:18px;padding:2px 10px">🔊</button><div id="dash">اندفاع</div><div id="joy"><i></i></div>
 </div>
@@ -320,7 +321,10 @@ function hurtP(d){
  if(P.hp<=0){if(P.rev>0){P.rev--;P.hp=P.mhp*.6;P.inv=2.5;ringFx(P.x,P.z,12,0xffffff,.6);banner('عنخ الإحياء! حياة تانية');for(const e of enemies)if(!e.boss&&Math.hypot(e.x-P.x,e.z-P.z)<12){e.vx+=(e.x-P.x)*2;e.vz+=(e.z-P.z)*2}}else gameOver()}}
 function inSand(x,z){for(const q of sands){if(q.water)continue;if((x-q.x)**2+(z-q.z)**2<q.r*q.r)return true}return false}
 const inWater=z=>S.map===3&&Math.abs(z)<6;
-function mapTick(dt){if(S.map===3){S.lotusT-=dt;if(S.lotusT<=0){S.lotusT=30;dropHeart(rr(-30,30),rr(-4,4));banner('🪷 لوتس شفاء ظهر في النهر')}}if(S.map!==2)return;S.windT-=dt;if(S.windT<=0&&!S.wind){S.windT=40;const a=R()*TAU;S.wind={t:6,dx:Math.cos(a),dz:Math.sin(a)};banner('🌪 عاصفة رملية! بتزقّك')}
+function meteors(dt){if(S.auto&&Q.get('nometeor'))return;S.metT=(S.metT===undefined?70:S.metT)-dt;
+ if(S.metT<=0){S.metT=80;S.metN=10;S.metI=0;banner('☄ وابل نيازك! اتحرك');snd(80,.8,'sawtooth',.1,.4)}
+ if(S.metN>0){S.metI-=dt;if(S.metI<=0){S.metI=.4;S.metN--;const a=R()*TAU,d=R()<.5?rr(0,3):rr(3,11);addTele(P.x+Math.cos(a)*d,P.z+Math.sin(a)*d,3.2,1.1,12+S.t/25)}}}
+function mapTick(dt){meteors(dt);if(S.map===3){S.lotusT-=dt;if(S.lotusT<=0){S.lotusT=30;dropHeart(rr(-30,30),rr(-4,4));banner('🪷 لوتس شفاء ظهر في النهر')}}if(S.map!==2)return;S.windT-=dt;if(S.windT<=0&&!S.wind){S.windT=40;const a=R()*TAU;S.wind={t:6,dx:Math.cos(a),dz:Math.sin(a)};banner('🌪 عاصفة رملية! بتزقّك')}
  if(S.wind){S.wind.t-=dt;const w=S.wind;if(P.dash<=0){P.x+=w.dx*2.6*dt;P.z+=w.dz*2.6*dt}for(const e of enemies){if(!e.boss){e.x+=w.dx*2.2*dt;e.z+=w.dz*2.2*dt}}if(R()<.7)burst(P.x+rr(-12,12),rr(.5,3),P.z+rr(-9,9),1,0xd8b070,5);if(w.t<=0)S.wind=null}}
 function updatePlayer(dt){
  mapTick(dt);const v=inputVec();
@@ -440,8 +444,14 @@ function useUlt(){if(!S||S.state!=='play'||(S.rage||0)<100)return;S.rage=0;P.inv
  for(let k=0;k<4;k++)ringFx(P.x,P.z,10+k*9,k%2?0xffffff:0xffd24a,.5+k*.15);burst(P.x,1,P.z,60,0xffd24a,16);S.shake=1.4;snd(150,.9,'sawtooth',.12,3);snd(900,.6,'triangle',.08,.3);banner('☀ غضب رع!');
  const dm=pdmg(110+5*P.lvl);for(const e of enemies.slice()){if(e.dead)continue;const d=Math.hypot(e.x-P.x,e.z-P.z);if(d<34){hurtE(e,e.boss?dm*2:dm,(e.x-P.x)/(d||1)*3,(e.z-P.z)/(d||1)*3)}}
  for(let i=eprojs.length-1;i>=0;i--){scene.remove(eprojs[i].m);eprojs.splice(i,1)}}
+function miniMap(){const c=$('mm');if(!c||!P)return;const x=c.getContext('2d'),W=130,sc=60/(AR+8);x.clearRect(0,0,W,W);x.save();x.translate(65,65);
+ x.strokeStyle='rgba(255,210,74,.5)';x.beginPath();x.arc(0,0,AR*sc,0,TAU);x.stroke();
+ if(S.map===3){x.fillStyle='rgba(60,140,200,.45)';x.fillRect(-AR*sc,-6*sc,AR*2*sc,12*sc)}
+ for(const g of gems){x.fillStyle=g.k==='heart'?'#ff6a7a':g.k==='chest'?'#ffd24a':'#5fff9a';x.fillRect(g.x*sc-1,g.z*sc-1,g.k==='gem'?1.5:3,g.k==='gem'?1.5:3)}
+ for(const e of enemies){if(e.dead)continue;x.fillStyle=e.boss?'#d070ff':e.elite?'#ffd24a':'#ff4a4a';const s=e.boss?5:e.elite?3:2;x.fillRect(e.x*sc-s/2,e.z*sc-s/2,s,s)}
+ x.fillStyle='#7de0ff';x.beginPath();x.arc(P.x*sc,P.z*sc,3.2,0,TAU);x.fill();x.restore()}
 function ultUI(){const u=$('ult');if(!u)return;const f=Math.floor(S.rage||0);u.style.display='block';u.style.background=f>=100?'radial-gradient(#ffe27a,#c8860a)':`linear-gradient(to top,#c8860a ${f}%,rgba(20,10,30,.8) ${f}%)`;u.style.boxShadow=f>=100?'0 0 18px 6px #ffd24a':'none';u.textContent=f>=100?'☀ Q':f+'%'}
-function addXP(v){P.xp+=v*P.xpM;while(P.xp>=xpNeed(P.lvl)){P.xp-=xpNeed(P.lvl);P.lvl++;S.pending++;snd(520,.4,'triangle',.08,2.2)}}
+function addXP(v){P.xp+=v*P.xpM;while(P.xp>=xpNeed(P.lvl)){P.xp-=xpNeed(P.lvl);P.lvl++;S.pending++;snd(520,.4,'triangle',.08,2.2);ringFx(P.x,P.z,6,0xffd24a,.5);ringFx(P.x,P.z,3,0xffffff,.35);burst(P.x,2,P.z,30,0xffe27a,6)}}
 function offerUpgrades(){
  const pool=[];for(const k in WDEF){const L=P.w[k];if(L<5)pool.push({t:'w',k,L,wt:L===0?(Object.values(P.w).filter(x=>x>0).length<2?3:1.5):1.2})}
  for(const k in PDEF){const L=P.p[k];if(L<5)pool.push({t:'p',k,L,wt:1})}
@@ -544,7 +554,7 @@ let last=performance.now();
 function frame(now){
  requestAnimationFrame(frame);const dt=Math.min(.05,(now-last)/1000);last=now;
  if(S&&S.state==='winning'){S.winT-=dt;updFx(dt);if(S.winT<=0)end(true)}
- else if(S&&S.state==='play'){step(dt);if(S.state==='play'){hud();ultUI()}}
+ else if(S&&S.state==='play'){step(dt);if(S.state==='play'){hud();ultUI();if(((S.t*30)|0)%3===0)miniMap()}}
  render()}
 function render(){
  if(P&&S&&S.state!=='end'){const sh=S.shake;cam.position.set(P.x+rr(-sh,sh),31+rr(-sh,sh)*.5,P.z+20);cam.lookAt(P.x,0,P.z+1);
