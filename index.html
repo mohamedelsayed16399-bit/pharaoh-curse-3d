@@ -170,6 +170,7 @@ const WDEF={
  scarab:{n:'جعارين حارسة',ic:'🪲',d:['جعران يدور حواليك','+جعران وضرر','أسرع ومدى أوسع','+جعران','أقصى: 6 جعارين ودوران عنيف']},
  nova:{n:'وهج رع',ic:'☀️',d:['نبضة شمس تدفع وتحرق','نبضة أسرع ومدى أكبر','ضرر أعلى','نبضة أسرع','أقصى: نبضة مزدوجة']},
  storm:{n:'عاصفة الرمال',ic:'🌪️',d:['زوبعة تطارد الأعداء وتسحبهم','+زوبعة وضرر','مدى أوسع وضرر أعلى','+زوبعة','أقصى: زوبعتين إضافيتين وسحب أقوى']},
+ boom:{n:'خوبش الملك',ic:'🪃',d:['منجل يطير ويرجع يقطع كل اللي في طريقه','+ضرر','+منجل تاني','+ضرر ومدى','أقصى: 3 مناجل وضرر ضخم']},
  spear:{n:'رمح الشمس',ic:'🔱',d:['رمح كبير يخترق صف كامل من الأعداء','+ضرر وأسرع','يطير أبعد','+ضرر','أقصى: 3 رماح بمروحة']},
  bolt:{n:'صاعقة أنوبيس',ic:'⚡',d:['برق يقفز بين الأعداء','يقفز لهدف زيادة','ضرر ومدى أكبر','هدف زيادة','أقصى: يضرب بقوة مضاعفة وأهداف أكتر']}};
 const PDEF={
@@ -186,8 +187,8 @@ function newRun(){
  clearAll();
  const u=SAVE.up;
  P={x:0,z:0,fx:0,fz:1,hp:100*(1+.12*u.hp),mhp:100*(1+.12*u.hp),sp:7*(1+.05*u.spd),inv:0,dash:0,dcd:0,dvx:0,dvz:0,
-  xp:0,lvl:1,w:{ankh:1,scarab:0,nova:0,bolt:0,storm:0,spear:0},p:{hp:0,spd:0,mag:0,xp:0,dmg:0,reg:0,cdr:0},
-  cd:{ankh:.3,nova:2,bolt:1,spear:1},evo:{},pets:[],rev:u.rev,m:mkPlayer(),orbA:0,hurtT:0};
+  xp:0,lvl:1,w:{ankh:1,scarab:0,nova:0,bolt:0,storm:0,spear:0,boom:0},p:{hp:0,spd:0,mag:0,xp:0,dmg:0,reg:0,cdr:0},
+  cd:{ankh:.3,nova:2,bolt:1,spear:1,boom:1.5},evo:{},pets:[],rev:u.rev,m:mkPlayer(),orbA:0,hurtT:0};
  P.dmgM=1+.08*u.dmg;P.xpM=1+.1*u.xp;
  scene.add(P.m);
  S={curse:Math.min(SAVE.curse||1,SAVE.maxCurse||1),state:'play',t:0,kills:0,coins:0,sp:0,swarmT:30,bosses:0,final:false,won:false,shake:0,pending:0,chests:0,bossE:null,dealt:0,nov2:0,winT:0,auto:false,dashReq:false};
@@ -387,6 +388,7 @@ function weapons(dt){
    const rad=(2.2+.25*L)*(P.evo.storm?1.4:1);z.m.position.set(z.x,1.7,z.z);z.m.rotation.y=z.a;z.m.scale.set(rad/1.8*1.1,1,rad/1.8*1.1);z.tk-=dt;
    if(z.tk<=0){z.tk=.35;snd(90,.2,'sawtooth',.02,.7,'st');near(z.x,z.z,rad+2,e=>{if(e.dead)return;const ex=z.x-e.x,ez=z.z-e.z,ed=Math.hypot(ex,ez);if(ed<rad+e.r){hurtE(e,pdmg(6+3*L),ex/(ed||1)*(L>=5?-.3:-.1),ez/(ed||1)*(L>=5?-.3:-.1))}})}
    near(z.x,z.z,rad+3,e=>{if(e.dead||e.boss)return;const ex=z.x-e.x,ez=z.z-e.z,ed=Math.hypot(ex,ez);if(ed<rad+3&&ed>.5){e.x+=ex/ed*dt*(L>=5?4:2.5);e.z+=ez/ed*dt*(L>=5?4:2.5)}})}}
+ if(w.boom){const L=w.boom;P.cd.boom-=dt;if(P.cd.boom<=0){P.cd.boom=(3.4-.25*L)*cdm();const n=L>=5?3:L>=3?2:1;const t=nearest(P.x,P.z,26);const base=t?Math.atan2(t.z-P.z,t.x-P.x):Math.atan2(P.fz,P.fx);snd(420,.25,'sawtooth',.04,.5,'boom');for(let i=0;i<n;i++){const a=base+(i-(n-1)/2)*.9;const m=new THREE.Mesh(new THREE.TorusGeometry(.7,.16,6,14,4.2),new THREE.MeshBasicMaterial({color:0xffc040}));m.rotation.x=-Math.PI/2;const g=new THREE.Group();g.add(m);if(P.evo.boom)g.scale.setScalar(1.7);g.position.set(P.x,1.1,P.z);scene.add(g);projs.push({x:P.x,z:P.z,vx:Math.cos(a)*17,vz:Math.sin(a)*17,dmg:pdmg((14+6*L)*(P.evo.boom?1.6:1)),pi:9999,life:6,m:g,hit:new Set(),home:false,boom:true,t:0,turn:.55+.1*L,spin:true})}}}
  if(w.spear){const L=w.spear;P.cd.spear-=dt;if(P.cd.spear<=0){P.cd.spear=(3.2-.3*L)*cdm();const t=nearest(P.x,P.z,28);const base=t?Math.atan2(t.z-P.z,t.x-P.x):Math.atan2(P.fz,P.fx);snd(300,.12,'square',.03,2.2,'spear');const n=L>=5?3:1;for(let i=0;i<n;i++){const a=base+(i-(n-1)/2)*.35;const m=new THREE.Mesh(GEO.cone,new THREE.MeshBasicMaterial({color:0xfff0a0}));m.scale.set(.35,2.6,.35);m.rotation.set(Math.PI/2,0,0);const g=new THREE.Group();g.add(m);g.rotation.y=-a+Math.PI/2;g.position.set(P.x,1.2,P.z);scene.add(g);projs.push({x:P.x,z:P.z,vx:Math.cos(a)*26,vz:Math.sin(a)*26,dmg:pdmg(26+9*L),pi:99,life:.7+.12*L,m:g,hit:new Set(),home:false})}snd(250,.25,'sawtooth',.06,2.2,'sp')}}
  if(w.bolt){const L=w.bolt;P.cd.bolt-=dt;if(P.cd.bolt<=0){P.cd.bolt=(2-.15*L)*cdm();
   const hit=new Set();let cur={x:P.x,z:P.z};const n=2+L+(L>=5?3:0)+(P.evo.bolt?4:0);let pts=[[P.x,1.5,P.z]];
@@ -399,6 +401,7 @@ function mkBolt(pts){const g=new THREE.BufferGeometry();const arr=[];for(let i=0
 function updateProj(dt){
  for(let i=projs.length-1;i>=0;i--){const p=projs[i];
   if(p.home){const t=nearest(p.x,p.z,12,p.hit);if(t){const a=Math.atan2(t.z-p.z,t.x-p.x),c=Math.atan2(p.vz,p.vx);let da=a-c;while(da>Math.PI)da-=TAU;while(da<-Math.PI)da+=TAU;const na=c+da*Math.min(1,dt*6);p.vx=Math.cos(na)*20;p.vz=Math.sin(na)*20;p.m.rotation.y=-na+Math.PI/2}}
+  if(p.boom){p.t+=dt;p.m.rotation.y+=dt*16;if(!p.back&&p.t>p.turn){p.back=true;p.hit.clear()}if(p.back){const dx=P.x-p.x,dz=P.z-p.z,d=Math.hypot(dx,dz)||1;p.vx=dx/d*24;p.vz=dz/d*24;if(d<1){p.life=0}if(p.t>p.turn+.25&&p.t%.5<dt)p.hit.clear()}}
   p.x+=p.vx*dt;p.z+=p.vz*dt;p.life-=dt;p.m.position.set(p.x,1.2,p.z);
   near(p.x,p.z,1.5,e=>{if(e.dead||p.pi<=0||p.hit.has(e))return;if(Math.hypot(e.x-p.x,e.z-p.z)<e.r+.35){p.hit.add(e);p.pi--;hurtE(e,p.dmg,p.vx*.15,p.vz*.15)}});
   if(p.life<=0||p.pi<=0){scene.remove(p.m);projs.splice(i,1)}}}
@@ -419,7 +422,7 @@ function addXP(v){P.xp+=v*P.xpM;while(P.xp>=xpNeed(P.lvl)){P.xp-=xpNeed(P.lvl);P
 function offerUpgrades(){
  const pool=[];for(const k in WDEF){const L=P.w[k];if(L<5)pool.push({t:'w',k,L,wt:L===0?(Object.values(P.w).filter(x=>x>0).length<2?3:1.5):1.2})}
  for(const k in PDEF){const L=P.p[k];if(L<5)pool.push({t:'p',k,L,wt:1})}
- const EV={ankh:'dmg',scarab:'spd',nova:'cdr',bolt:'mag',storm:'hp'};for(const k in EV)if(P.w[k]>=5&&!P.evo[k]&&P.p[EV[k]]>=1)pool.push({t:'e',k,L:0,wt:9});
+ const EV={ankh:'dmg',scarab:'spd',nova:'cdr',bolt:'mag',storm:'hp',boom:'cdr'};for(const k in EV)if(P.w[k]>=5&&!P.evo[k]&&P.p[EV[k]]>=1)pool.push({t:'e',k,L:0,wt:9});
  const out=[];while(out.length<3&&pool.length){let tot=0;for(const o of pool)tot+=o.wt;let r=R()*tot,ix=0;for(let i=0;i<pool.length;i++){if((r-=pool[i].wt)<0){ix=i;break}}out.push(pool.splice(ix,1)[0])}
  return out}
 function showLevel(){
@@ -430,7 +433,7 @@ function showLevel(){
   c.innerHTML=`<div class="lv">[${opts.indexOf(o)+1}]</div><div class="ic">${d.ic}</div><div class="nm">${d.n}</div><div class="lv">${o.t==='e'?'تطور!':o.L?`مستوى ${o.L} ← ${o.L+1}`:(o.t==='w'?'سلاح جديد!':'جديد')}</div><div class="ds">${o.t==='w'?d.d[o.L]:d.d}</div>`;
   c.onclick=()=>pickUp(o);box.appendChild(c)});
  $('lvl').classList.add('on')}
-const EDESC={ankh:'سهام ملكية: +2 سهم، اختراق 5، ضرر ×1.5',scarab:'8 جعارين أكبر وأقوى ×1.6',nova:'وهج أسرع ضعفين ومدى أكبر',bolt:'+4 قفزات وضرر أعلى',storm:'+2 زوبعة وحجم أكبر'};
+const EDESC={boom:'مناجل أكبر ×1.7 وضرر ×1.6',ankh:'سهام ملكية: +2 سهم، اختراق 5، ضرر ×1.5',scarab:'8 جعارين أكبر وأقوى ×1.6',nova:'وهج أسرع ضعفين ومدى أكبر',bolt:'+4 قفزات وضرر أعلى',storm:'+2 زوبعة وحجم أكبر'};
 function pickUp(o){
  if(o.t==='e'){P.evo[o.k]=1;banner('✨ تطور! '+WDEF[o.k].n);ringFx(P.x,P.z,10,0xffffff,.6)}
  else if(o.t==='w'){P.w[o.k]++}
@@ -500,7 +503,7 @@ function resultCanvas(){const c=document.createElement('canvas');c.width=800;c.h
  x.font='26px Tahoma,Arial';x.fillText(`لعنة ${S.curse}${S.daily?' · تحدي اليوم':''}${S.endless?' · لانهائي':''}`,400,305);x.fillStyle='#ffe9a8';x.font='22px Tahoma,Arial';x.fillText('mohamedelsayed16399-bit.github.io/pharaoh-curse-3d',400,400);return c}
 $('shareimg').onclick=()=>{const c=resultCanvas();c.toBlob(b=>{const f=new File([b],'pharaoh-curse.png',{type:'image/png'});if(navigator.canShare&&navigator.canShare({files:[f]})){navigator.share({files:[f],text:S.shareTxt||''}).catch(()=>{})}else{const a=document.createElement('a');a.href=URL.createObjectURL(b);a.download='pharaoh-curse.png';a.click()}})};
 $('share').onclick=()=>{const t=S.shareTxt||'';if(navigator.share){navigator.share({text:t}).catch(()=>{})}else if(navigator.clipboard){navigator.clipboard.writeText(t);$('share').textContent='✅ اتنسخ'}};
-function startRun(){SEEDF=DAILY?mul(DSEED):null;newRun();S.daily=DAILY;if(DAILY){S.mod=DMOD;if(DMOD===2){P.mhp*=.6;P.hp=P.mhp;P.dmgM*=1.5}if(DMOD===3)P.xpM*=1.5}else S.mod=0;$('menu').classList.remove('on');$('end').classList.remove('on');$('hud').classList.add('on');$('dash').style.display=touch?'flex':'none';snd(300,.3,'sine',.06,2)}
+function startRun(){SEEDF=DAILY?mul(DSEED):null;newRun();if(Q.get('boom')){P.w.boom=+Q.get('boom');if(Q.get('boomevo'))P.evo.boom=1}S.daily=DAILY;if(DAILY){S.mod=DMOD;if(DMOD===2){P.mhp*=.6;P.hp=P.mhp;P.dmgM*=1.5}if(DMOD===3)P.xpM*=1.5}else S.mod=0;$('menu').classList.remove('on');$('end').classList.remove('on');$('hud').classList.add('on');$('dash').style.display=touch?'flex':'none';snd(300,.3,'sine',.06,2)}
 $('play').onclick=startRun;$('again').onclick=()=>{$('end').classList.remove('on');$('menu').classList.add('on');$('share').textContent='📤 شارك نتيجتك';renderShop();renderCurse()};
 function togglePause(){if(!S)return;if(S.state==='play'){S.state='pause';$('pause').classList.add('on')}else if(S.state==='pause'){S.state='play';$('pause').classList.remove('on')}}
 $('resume').onclick=togglePause;$('quit').onclick=()=>{$('pause').classList.remove('on');S.state='play';P.hp=0;gameOver()};
