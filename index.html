@@ -52,6 +52,7 @@ button:disabled{opacity:.4}
 <div class="ov on" id="menu">
  <h1>𓂀 لعنة الفرعون</h1>
  <div class="sub">ادخل المقبرة، اجمع الذهب، وانجُ من اللعنة لحد الفجر. اقتل أنوبيس العظيم وخلّص اللعبة.</div>
+ <div id="curse" style="margin-bottom:10px"></div>
  <button class="big" id="play">ابدأ الرحلة</button>
  <div style="margin-top:12px" id="mstats"></div>
  <h2>معبد التطوير 🪙 <span id="coins">0</span></h2>
@@ -60,7 +61,7 @@ button:disabled{opacity:.4}
 </div>
 <div class="ov" id="lvl"><h2>⭐ ارتقيت! اختار قوة</h2><div class="cards" id="cards"></div></div>
 <div class="ov" id="pause"><h2>⏸ إيقاف مؤقت</h2><button id="resume">كمّل</button><br><button id="quit" style="font-size:15px">انسحب</button></div>
-<div class="ov" id="end"><h1 id="et"></h1><div id="es" class="sub" style="line-height:1.9;font-size:18px"></div><button class="big" id="again">جولة جديدة</button></div>
+<div class="ov" id="end"><h1 id="et"></h1><div id="es" class="sub" style="line-height:1.9;font-size:18px"></div><button id="share" style="margin-bottom:10px">📤 شارك نتيجتك</button><br><button class="big" id="again">جولة جديدة</button></div>
 <script src="https://cdn.jsdelivr.net/npm/three@0.149.0/build/three.min.js"></script>
 <script>
 "use strict";
@@ -70,7 +71,7 @@ const TEST=Q.has('test'), GOD=Q.has('god');
 const R=Math.random, TAU=Math.PI*2, rr=(a,b)=>a+R()*(b-a);
 const touch=('ontouchstart' in window)||navigator.maxTouchPoints>0;
 /* ---------- save ---------- */
-let SAVE={coins:0,best:0,runs:0,kills:0,wins:0,up:{hp:0,dmg:0,spd:0,xp:0,rev:0}};
+let SAVE={coins:0,best:0,runs:0,kills:0,wins:0,maxCurse:1,curse:1,up:{hp:0,dmg:0,spd:0,xp:0,rev:0}};
 try{const s=JSON.parse(localStorage.getItem('pharaoh3d'));if(s){SAVE=Object.assign(SAVE,s);SAVE.up=Object.assign({hp:0,dmg:0,spd:0,xp:0,rev:0},s.up)}}catch(e){}
 const persist=()=>{try{localStorage.setItem('pharaoh3d',JSON.stringify(SAVE))}catch(e){}};
 const SHOP=[
@@ -152,30 +153,31 @@ const ET={
  golem:{hp:150,sp:1.7,dmg:16,r:1.4,xp:12,mk(){const g=new THREE.Group();shadow(g,1.6);part(g,GEO.box,mat(0x8a7a5a),1.8,1.6,1.2,0,1.2,0);part(g,GEO.box,mat(0x9a8a6a),1.2,1,1,0,2.4,0);part(g,GEO.box,mat(0x8a7a5a),.6,1.6,.6,-1.3,1.4,0);part(g,GEO.box,mat(0x8a7a5a),.6,1.6,.6,1.3,1.4,0);part(g,GEO.box,new THREE.MeshBasicMaterial({color:0xff7a1a}),.9,.18,.1,0,2.5,.51);return g}},
  boss:{hp:1300,sp:2.4,dmg:20,r:2.2,xp:0,mk(){const g=new THREE.Group();shadow(g,2.6);part(g,GEO.cone,mat(0x1a1030,0x20104a),2.2,4.2,2.2,0,2.1,0);part(g,GEO.sph,mat(0x2a2038),.9,1,.9,0,4.5,0);part(g,GEO.cone,mat(0x2a2038),.3,1.5,.3,-.5,5.7,0);part(g,GEO.cone,mat(0x2a2038),.3,1.5,.3,.5,5.7,0);part(g,GEO.box,mat(0xffd24a,0x8a6a00),1.9,.35,1,0,3.8,.1);part(g,GEO.sph,new THREE.MeshBasicMaterial({color:0xff4020}),.14,.14,.14,-.3,4.6,.8);part(g,GEO.sph,new THREE.MeshBasicMaterial({color:0xff4020}),.14,.14,.14,.3,4.6,.8);part(g,GEO.cyl,mat(0xffd24a,0x8a6a00),.12,5.5,.12,2,2.8,0);return g}}};
 /* ---------- state ---------- */
-let P,S,enemies=[],projs=[],eprojs=[],gems=[],tele=[],fxs=[],orbs=[],grid=new Map();
+let zones=[],P,S,enemies=[],projs=[],eprojs=[],gems=[],tele=[],fxs=[],orbs=[],grid=new Map();
 const keys={};let joyV={x:0,z:0};
 const WDEF={
  ankh:{n:'سهام عنخ',ic:'☥',d:['سهم ذهبي على أقرب عدو','+سهم إضافي وضرر أعلى','اختراق عدو إضافي','+سهم، ضرر أعلى','أقصى: سهام موجهة تخترق 3']},
  scarab:{n:'جعارين حارسة',ic:'🪲',d:['جعران يدور حواليك','+جعران وضرر','أسرع ومدى أوسع','+جعران','أقصى: 6 جعارين ودوران عنيف']},
  nova:{n:'وهج رع',ic:'☀️',d:['نبضة شمس تدفع وتحرق','نبضة أسرع ومدى أكبر','ضرر أعلى','نبضة أسرع','أقصى: نبضة مزدوجة']},
+ storm:{n:'عاصفة الرمال',ic:'🌪️',d:['زوبعة تطارد الأعداء وتسحبهم','+زوبعة وضرر','مدى أوسع وضرر أعلى','+زوبعة','أقصى: زوبعتين إضافيتين وسحب أقوى']},
  bolt:{n:'صاعقة أنوبيس',ic:'⚡',d:['برق يقفز بين الأعداء','يقفز لهدف زيادة','ضرر ومدى أكبر','هدف زيادة','أقصى: يضرب بقوة مضاعفة وأهداف أكتر']}};
 const PDEF={
  hp:{n:'قلب الفرعون',ic:'❤️',d:'+25 صحة قصوى وتعافي فوري'},spd:{n:'خفة الريح',ic:'👟',d:'+8% سرعة'},
  mag:{n:'مغناطيس الذهب',ic:'🧲',d:'+35% مدى الجمع'},xp:{n:'حكمة تحوت',ic:'📜',d:'+15% خبرة'},
  dmg:{n:'قوة سخمت',ic:'💪',d:'+12% ضرر'},reg:{n:'نعمة إيزيس',ic:'🌿',d:'+0.7 صحة/ث'},cdr:{n:'ساعة رع',ic:'⏳',d:'-7% تبريد'}};
 function clearAll(){
- for(const a of [enemies,projs,eprojs,gems,tele,fxs,orbs])for(const o of a){if(o.m)scene.remove(o.m);if(o.m2)scene.remove(o.m2)}
- enemies=[];projs=[];eprojs=[];gems=[];tele=[];fxs=[];orbs=[];
+ for(const a of [enemies,projs,eprojs,gems,tele,fxs,orbs,zones])for(const o of a){if(o.m)scene.remove(o.m);if(o.m2)scene.remove(o.m2)}
+ enemies=[];projs=[];eprojs=[];gems=[];tele=[];fxs=[];orbs=[];zones=[];
  if(P&&P.m)scene.remove(P.m)}
 function newRun(){
  clearAll();
  const u=SAVE.up;
  P={x:0,z:0,fx:0,fz:1,hp:100*(1+.12*u.hp),mhp:100*(1+.12*u.hp),sp:7*(1+.05*u.spd),inv:0,dash:0,dcd:0,dvx:0,dvz:0,
-  xp:0,lvl:1,w:{ankh:1,scarab:0,nova:0,bolt:0},p:{hp:0,spd:0,mag:0,xp:0,dmg:0,reg:0,cdr:0},
+  xp:0,lvl:1,w:{ankh:1,scarab:0,nova:0,bolt:0,storm:0},p:{hp:0,spd:0,mag:0,xp:0,dmg:0,reg:0,cdr:0},
   cd:{ankh:.3,nova:2,bolt:1},rev:u.rev,m:mkPlayer(),orbA:0,hurtT:0};
  P.dmgM=1+.08*u.dmg;P.xpM=1+.1*u.xp;
  scene.add(P.m);
- S={state:'play',t:0,kills:0,coins:0,sp:0,swarmT:30,bosses:0,final:false,won:false,shake:0,pending:0,chests:0,bossE:null,dealt:0,nov2:0,winT:0,auto:false,dashReq:false};
+ S={curse:Math.min(SAVE.curse||1,SAVE.maxCurse||1),state:'play',t:0,kills:0,coins:0,sp:0,swarmT:30,bosses:0,final:false,won:false,shake:0,pending:0,chests:0,bossE:null,dealt:0,nov2:0,winT:0,auto:false,dashReq:false};
  $('boss').style.display='none';$('bname').style.display='none';
  renderWeapons();
 }
@@ -185,7 +187,7 @@ const pdmg=b=>b*P.dmgM*(1+.12*P.p.dmg);
 function spawnEnemy(type,x,z,elite){
  const d=ET[type];const hpm=1+S.t/100*.75+(S.t>240?(S.t-240)/110:0);
  const m=d.mk();m.position.set(x,0,z);scene.add(m);
- const e={type,x,z,vx:0,vz:0,hp:d.hp*hpm*(elite?3:1),mhp:0,sp:d.sp*(1+Math.min(.35,S.t/900))*(elite?1.1:1),dmg:d.dmg*(1+S.t/320),r:d.r*(elite?1.3:1),m,fl:0,t:rr(0,3),st:0,tt:rr(.5,2),elite:!!elite,ph:R()*6};
+ const e={type,x,z,vx:0,vz:0,hp:d.hp*hpm*(elite?3:1)*(1+.25*(S.curse-1)),mhp:0,sp:d.sp*(1+Math.min(.35,S.t/900))*(elite?1.1:1),dmg:d.dmg*(1+S.t/320),r:d.r*(elite?1.3:1),m,fl:0,t:rr(0,3),st:0,tt:rr(.5,2),elite:!!elite,ph:R()*6};
  e.mhp=e.hp;if(elite){m.scale.multiplyScalar(1.3);const crown=new THREE.Mesh(GEO.ring,new THREE.MeshBasicMaterial({color:0xffd24a,side:2}));crown.rotation.x=-Math.PI/2;crown.scale.setScalar(d.r*2);crown.position.y=.1;m.add(crown)}
  enemies.push(e);return e}
 function spawnBoss(final){
@@ -202,7 +204,7 @@ function director(dt){
  const t=S.t;
  if(t>=BOSS1&&S.bosses===0){S.bosses=1;spawnBoss(false)}
  if(t>=BOSS2&&S.bosses===1){S.bosses=2;S.final=true;spawnBoss(true)}
- const rate=(1.3+t/34)*(S.bossE?.6:1)*(Q.has('hard')?2:1);
+ const rate=(1.3+t/34)*(1+.35*(S.curse-1))*(S.bossE?.6:1)*(Q.has('hard')?2:1);
  S.sp+=dt*rate;
  const cap=Math.min(190,60+t/3);
  while(S.sp>=1){S.sp-=1;if(enemies.length>=cap)continue;
@@ -337,6 +339,12 @@ function weapons(dt){
    near(o.x,o.z,1.6,e=>{if(e.dead)return;if(Math.hypot(e.x-o.x,e.z-o.z)<e.r+.7){const lh=o.hit.get(e)||-9;if(S.t-lh>.35){o.hit.set(e,S.t);hurtE(e,pdmg(9+3.5*L),(e.x-o.x),(e.z-o.z))}}})})}
  if(w.nova){const L=w.nova;P.cd.nova-=dt;if(P.cd.nova<=0){P.cd.nova=(5.2-.45*L)*cdm();doNova(L,1);if(L>=5)S.nov2=.35}
   if(S.nov2>0){S.nov2-=dt;if(S.nov2<=0)doNova(L,.7)}}
+ if(w.storm){const L=w.storm,n=1+Math.floor(L/2)+(L>=5?1:0);
+  while(zones.length<n){const m=new THREE.Mesh(new THREE.CylinderGeometry(1.8,.5,3.4,14,1,true),new THREE.MeshBasicMaterial({color:0xe6c27a,transparent:true,opacity:.5,side:2,depthWrite:false}));scene.add(m);zones.push({m,x:P.x+rr(-4,4),z:P.z+rr(-4,4),tk:0,a:R()*6})}
+  for(const z of zones){const t=nearest(z.x,z.z,22);const tx=t?t.x:P.x,tz=t?t.z:P.z,dx=tx-z.x,dz=tz-z.z,d=Math.hypot(dx,dz)||1;z.x+=dx/d*Math.min(d,3.6)*dt*(d>1?1:.2);z.z+=dz/d*Math.min(d,3.6)*dt*(d>1?1:.2);z.a+=dt*9;
+   const rad=2.2+.25*L;z.m.position.set(z.x,1.7,z.z);z.m.rotation.y=z.a;z.m.scale.set(rad/1.8*1.1,1,rad/1.8*1.1);z.tk-=dt;
+   if(z.tk<=0){z.tk=.35;near(z.x,z.z,rad+2,e=>{if(e.dead)return;const ex=z.x-e.x,ez=z.z-e.z,ed=Math.hypot(ex,ez);if(ed<rad+e.r){hurtE(e,pdmg(6+3*L),ex/(ed||1)*(L>=5?-.3:-.1),ez/(ed||1)*(L>=5?-.3:-.1))}})}
+   near(z.x,z.z,rad+3,e=>{if(e.dead||e.boss)return;const ex=z.x-e.x,ez=z.z-e.z,ed=Math.hypot(ex,ez);if(ed<rad+3&&ed>.5){e.x+=ex/ed*dt*(L>=5?4:2.5);e.z+=ez/ed*dt*(L>=5?4:2.5)}})}}
  if(w.bolt){const L=w.bolt;P.cd.bolt-=dt;if(P.cd.bolt<=0){P.cd.bolt=(2-.15*L)*cdm();
   const hit=new Set();let cur={x:P.x,z:P.z};const n=2+L+(L>=5?3:0);let pts=[[P.x,1.5,P.z]];
   for(let i=0;i<n;i++){const t=nearest(cur.x,cur.z,i?10+L:16,hit);if(!t)break;hit.add(t);pts.push([t.x,1,t.z]);hurtE(t,pdmg((14+5*L)*(L>=5?1.5:1)),0,0);cur=t}
@@ -396,7 +404,7 @@ function updFx(dt){
 function hud(){
  $('hpb').firstChild.style.width=Math.max(0,P.hp/P.mhp*100)+'%';$('xpb').firstChild.style.width=(P.xp/xpNeed(P.lvl)*100)+'%';
  const t=Math.floor(S.t);$('tm').textContent=Math.floor(t/60)+':'+String(t%60).padStart(2,'0');
- $('st').innerHTML=`المستوى ${P.lvl}<br>☠ ${S.kills} &nbsp; 🪙 ${S.coins}`;
+ $('st').innerHTML=`المستوى ${P.lvl}${S.curse>1?' · لعنة '+S.curse:''}<br>☠ ${S.kills} &nbsp; 🪙 ${S.coins}`;
  const dd=$('dash');dd.classList.toggle('cd',P.dcd>0);dd.textContent=P.dcd>0?P.dcd.toFixed(1):'اندفاع'}
 /* ---------- flow ---------- */
 function step(dt){
@@ -407,11 +415,11 @@ function step(dt){
   else showLevel()}}
 function end(win){
  S.state='end';S.won=win;
- const earned=S.coins+Math.floor(S.kills/20)+(win?100:0);SAVE.coins+=earned;SAVE.runs++;SAVE.kills+=S.kills;if(S.t>SAVE.best)SAVE.best=Math.floor(S.t);if(win)SAVE.wins++;persist();
+ const earned=Math.floor((S.coins+Math.floor(S.kills/20)+(win?100:0))*(1+.5*(S.curse-1)));if(win&&S.curse>=SAVE.maxCurse&&SAVE.maxCurse<3){SAVE.maxCurse++;S.unlock=1}SAVE.coins+=earned;SAVE.runs++;SAVE.kills+=S.kills;if(S.t>SAVE.best)SAVE.best=Math.floor(S.t);if(win)SAVE.wins++;persist();
  $('et').textContent=win?'☀️ طلع الفجر! كسرت اللعنة':'💀 اللعنة أخدتك';
  const t=Math.floor(S.t);
  $('es').innerHTML=`صمدت ${Math.floor(t/60)}:${String(t%60).padStart(2,'0')} · المستوى ${P.lvl} · ☠ ${S.kills}<br>الذهب اللي كسبته: 🪙 ${earned}${win?' (+100 مكافأة النصر)':''}`;
- $('end').classList.add('on');$('hud').classList.remove('on')}
+ if(S.unlock)$('es').innerHTML+='<br>🔓 فتحت مستوى لعنة أعلى!';if(S.curse>1)$('es').innerHTML+=`<br>مضاعف اللعنة ×${1+.5*(S.curse-1)}`;S.shareTxt=`𓂀 لعنة الفرعون: صمدت ${Math.floor(t/60)}:${String(t%60).padStart(2,'0')}، مستوى ${P.lvl}، قتلت ${S.kills}${win?' وكسرت اللعنة ☀️':''} (لعنة ${S.curse}) — جرّبها: https://mohamedelsayed16399-bit.github.io/pharaoh-curse-3d/`;$('end').classList.add('on');$('hud').classList.remove('on')}
 function gameOver(){snd(100,1,'sawtooth',.12,.3);end(false)}
 function win(){banner('☀️ النصر!');S.state='winning';S.winT=2.2}
 function renderShop(){
@@ -420,8 +428,11 @@ function renderShop(){
   d.innerHTML=`<b>${s.n}</b> ${'★'.repeat(lv)}${'☆'.repeat(s.max-lv)}<br>${s.d}<br>`;const b=document.createElement('button');b.textContent=done?'مكتمل':`🪙 ${s.c[lv]}`;b.disabled=done||SAVE.coins<s.c[lv];
   b.onclick=()=>{SAVE.coins-=s.c[lv];SAVE.up[s.k]=lv+1;persist();renderShop();snd(700,.15,'triangle',.06,1.5)};d.appendChild(b);box.appendChild(d)}}
 $('help').innerHTML=touch?'اسحب في الشاشة للحركة · زرار الاندفاع تحت · الأسلحة بتضرب لوحدها':'<span class="k">WASD</span> أو الأسهم للحركة · <span class="k">Space</span> اندفاع · <span class="k">P</span> إيقاف · الأسلحة بتضرب لوحدها';
+function renderCurse(){const b=$('curse');b.innerHTML='مستوى اللعنة: ';for(let i=1;i<=3;i++){const x=document.createElement('button');x.style.cssText='font-size:15px;padding:5px 14px;margin:0 3px';x.textContent=i>SAVE.maxCurse?'🔒':'☠'.repeat(i);x.disabled=i>SAVE.maxCurse;if(i===Math.min(SAVE.curse,SAVE.maxCurse))x.style.outline='3px solid #fff';x.onclick=()=>{SAVE.curse=i;persist();renderCurse()};b.appendChild(x)}
+ const n=document.createElement('div');n.className='sub';n.style.margin='4px';n.textContent=SAVE.maxCurse<3?'كسّر اللعنة لتفتح مستوى أصعب (ذهب أكتر ×1.5 / ×2)':'أعلى مستوى لعنة مفتوح';b.appendChild(n)}
+$('share').onclick=()=>{const t=S.shareTxt||'';if(navigator.share){navigator.share({text:t}).catch(()=>{})}else if(navigator.clipboard){navigator.clipboard.writeText(t);$('share').textContent='✅ اتنسخ'}};
 function startRun(){newRun();$('menu').classList.remove('on');$('end').classList.remove('on');$('hud').classList.add('on');$('dash').style.display=touch?'flex':'none';snd(300,.3,'sine',.06,2)}
-$('play').onclick=startRun;$('again').onclick=()=>{$('end').classList.remove('on');$('menu').classList.add('on');renderShop()};
+$('play').onclick=startRun;$('again').onclick=()=>{$('end').classList.remove('on');$('menu').classList.add('on');$('share').textContent='📤 شارك نتيجتك';renderShop();renderCurse()};
 function togglePause(){if(!S)return;if(S.state==='play'){S.state='pause';$('pause').classList.add('on')}else if(S.state==='pause'){S.state='play';$('pause').classList.remove('on')}}
 $('resume').onclick=togglePause;$('quit').onclick=()=>{$('pause').classList.remove('on');S.state='play';P.hp=0;gameOver()};
 addEventListener('keydown',e=>{const k=e.key.length===1?e.key.toLowerCase():e.key;if(k===' '||k.startsWith('Arrow'))e.preventDefault();if((k==='p'||k==='Escape')&&!keys[k])togglePause();keys[k]=true});
@@ -445,7 +456,7 @@ function render(){
  else{const tt=performance.now()/6000;cam.position.set(Math.cos(tt)*30,18,Math.sin(tt)*30);cam.lookAt(0,0,0)}
  torches.forEach((f,i)=>{f.scale.y=1+.2*Math.sin(performance.now()/90+i)});
  renderer.render(scene,cam)}
-renderShop();requestAnimationFrame(frame);
+renderShop();renderCurse();requestAnimationFrame(frame);
 /* ---------- test harness ---------- */
 window.__sim=function(sec,opt){startRun();S.auto=true;const log=[];let err=null;
  try{const n=Math.floor(sec*30);for(let i=0;i<n&&S.state!=='end';i++){if(S.state==='winning'){S.winT-=1/30;if(S.winT<=0)end(true);continue}step(1/30);if(i%900===0)log.push({t:Math.round(S.t),hp:Math.round(P.hp),lvl:P.lvl,en:enemies.length,kills:S.kills,w:JSON.stringify(P.w)})}}
